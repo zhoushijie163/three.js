@@ -84,7 +84,7 @@ function WebGLRenderer( parameters ) {
 		 * Enables error checking and reporting when shader programs are being compiled
 		 * @type {boolean}
 		 */
-		checkShaderErrors: false
+		checkShaderErrors: true
 	};
 
 	// clearing
@@ -308,7 +308,7 @@ function WebGLRenderer( parameters ) {
 
 	// vr
 
-	var vr = ( typeof navigator !== 'undefined' && 'xr' in navigator ) ? new WebXRManager( _this ) : new WebVRManager( _this );
+	var vr = ( typeof navigator !== 'undefined' && 'xr' in navigator && 'requestDevice' in navigator.xr ) ? new WebXRManager( _this ) : new WebVRManager( _this );
 
 	this.vr = vr;
 
