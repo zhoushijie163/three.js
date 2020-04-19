@@ -252,6 +252,8 @@
 	var ZeroCurvatureEnding = 2400;
 	var ZeroSlopeEnding = 2401;
 	var WrapAroundEnding = 2402;
+	var NormalAnimationBlendMode = 2500;
+	var AdditiveAnimationBlendMode = 2501;
 	var TrianglesDrawMode = 0;
 	var TriangleStripDrawMode = 1;
 	var TriangleFanDrawMode = 2;
@@ -1066,6 +1068,15 @@
 
 			this.x = x * c - y * s + center.x;
 			this.y = x * s + y * c + center.y;
+
+			return this;
+
+		},
+
+		random: function () {
+
+			this.x = Math.random();
+			this.y = Math.random();
 
 			return this;
 
@@ -2449,6 +2460,17 @@
 
 			return this;
 
+		},
+
+		random: function () {
+
+			this.x = Math.random();
+			this.y = Math.random();
+			this.z = Math.random();
+			this.w = Math.random();
+
+			return this;
+
 		}
 
 	} );
@@ -2661,6 +2683,27 @@
 			dst[ dstOffset + 1 ] = y0;
 			dst[ dstOffset + 2 ] = z0;
 			dst[ dstOffset + 3 ] = w0;
+
+		},
+
+		multiplyQuaternionsFlat: function ( dst, dstOffset, src0, srcOffset0, src1, srcOffset1 ) {
+
+			var x0 = src0[ srcOffset0 ];
+			var y0 = src0[ srcOffset0 + 1 ];
+			var z0 = src0[ srcOffset0 + 2 ];
+			var w0 = src0[ srcOffset0 + 3 ];
+
+			var x1 = src1[ srcOffset1 ];
+			var y1 = src1[ srcOffset1 + 1 ];
+			var z1 = src1[ srcOffset1 + 2 ];
+			var w1 = src1[ srcOffset1 + 3 ];
+
+			dst[ dstOffset ] = x0 * w1 + w0 * x1 + y0 * z1 - z0 * y1;
+			dst[ dstOffset + 1 ] = y0 * w1 + w0 * y1 + z0 * x1 - x0 * z1;
+			dst[ dstOffset + 2 ] = z0 * w1 + w0 * z1 + x0 * y1 - y0 * x1;
+			dst[ dstOffset + 3 ] = w0 * w1 - x0 * x1 - y0 * y1 - z0 * z1;
+
+			return dst;
 
 		}
 
@@ -3929,6 +3972,16 @@
 			this.x = attribute.getX( index );
 			this.y = attribute.getY( index );
 			this.z = attribute.getZ( index );
+
+			return this;
+
+		},
+
+		random: function () {
+
+			this.x = Math.random();
+			this.y = Math.random();
+			this.z = Math.random();
 
 			return this;
 
@@ -6707,7 +6760,7 @@
 	function Sphere( center, radius ) {
 
 		this.center = ( center !== undefined ) ? center : new Vector3();
-		this.radius = ( radius !== undefined ) ? radius : 0;
+		this.radius = ( radius !== undefined ) ? radius : - 1;
 
 	}
 
@@ -6765,9 +6818,18 @@
 
 		},
 
-		empty: function () {
+		isEmpty: function () {
 
-			return ( this.radius <= 0 );
+			return ( this.radius < 0 );
+
+		},
+
+		makeEmpty: function () {
+
+			this.center.set( 0, 0, 0 );
+			this.radius = - 1;
+
+			return this;
 
 		},
 
@@ -6833,6 +6895,14 @@
 
 				console.warn( 'THREE.Sphere: .getBoundingBox() target is now required' );
 				target = new Box3();
+
+			}
+
+			if ( this.isEmpty() ) {
+
+				// Empty sphere produces empty bounding box
+				target.makeEmpty();
+				return target;
 
 			}
 
@@ -14814,7 +14884,7 @@
 
 	var lightmap_pars_fragment = "#ifdef USE_LIGHTMAP\n\tuniform sampler2D lightMap;\n\tuniform float lightMapIntensity;\n#endif";
 
-	var lights_lambert_vertex = "vec3 diffuse = vec3( 1.0 );\nGeometricContext geometry;\ngeometry.position = mvPosition.xyz;\ngeometry.normal = normalize( transformedNormal );\ngeometry.viewDir = ( isOrthographic ) ? vec3( 0, 0, 1 ) : normalize( -mvPosition.xyz );\nGeometricContext backGeometry;\nbackGeometry.position = geometry.position;\nbackGeometry.normal = -geometry.normal;\nbackGeometry.viewDir = geometry.viewDir;\nvLightFront = vec3( 0.0 );\nvIndirectFront = vec3( 0.0 );\n#ifdef DOUBLE_SIDED\n\tvLightBack = vec3( 0.0 );\n\tvIndirectBack = vec3( 0.0 );\n#endif\nIncidentLight directLight;\nfloat dotNL;\nvec3 directLightColor_Diffuse;\n#if NUM_POINT_LIGHTS > 0\n\t#pragma unroll_loop_start\n\tfor ( int i = 0; i < NUM_POINT_LIGHTS; i ++ ) {\n\t\tgetPointDirectLightIrradiance( pointLights[ i ], geometry, directLight );\n\t\tdotNL = dot( geometry.normal, directLight.direction );\n\t\tdirectLightColor_Diffuse = PI * directLight.color;\n\t\tvLightFront += saturate( dotNL ) * directLightColor_Diffuse;\n\t\t#ifdef DOUBLE_SIDED\n\t\t\tvLightBack += saturate( -dotNL ) * directLightColor_Diffuse;\n\t\t#endif\n\t}\n\t#pragma unroll_loop_end\n#endif\n#if NUM_SPOT_LIGHTS > 0\n\t#pragma unroll_loop_start\n\tfor ( int i = 0; i < NUM_SPOT_LIGHTS; i ++ ) {\n\t\tgetSpotDirectLightIrradiance( spotLights[ i ], geometry, directLight );\n\t\tdotNL = dot( geometry.normal, directLight.direction );\n\t\tdirectLightColor_Diffuse = PI * directLight.color;\n\t\tvLightFront += saturate( dotNL ) * directLightColor_Diffuse;\n\t\t#ifdef DOUBLE_SIDED\n\t\t\tvLightBack += saturate( -dotNL ) * directLightColor_Diffuse;\n\t\t#endif\n\t}\n\t#pragma unroll_loop_end\n#endif\n#if NUM_DIR_LIGHTS > 0\n\t#pragma unroll_loop_start\n\tfor ( int i = 0; i < NUM_DIR_LIGHTS; i ++ ) {\n\t\tgetDirectionalDirectLightIrradiance( directionalLights[ i ], geometry, directLight );\n\t\tdotNL = dot( geometry.normal, directLight.direction );\n\t\tdirectLightColor_Diffuse = PI * directLight.color;\n\t\tvLightFront += saturate( dotNL ) * directLightColor_Diffuse;\n\t\t#ifdef DOUBLE_SIDED\n\t\t\tvLightBack += saturate( -dotNL ) * directLightColor_Diffuse;\n\t\t#endif\n\t}\n\t#pragma unroll_loop_end\n#endif\n#if NUM_HEMI_LIGHTS > 0\n\t#pragma unroll_loop_start\n\tfor ( int i = 0; i < NUM_HEMI_LIGHTS; i ++ ) {\n\t\tvIndirectFront += getHemisphereLightIrradiance( hemisphereLights[ i ], geometry );\n\t\t#ifdef DOUBLE_SIDED\n\t\t\tvIndirectBack += getHemisphereLightIrradiance( hemisphereLights[ i ], backGeometry );\n\t\t#endif\n\t}\n\t#pragma unroll_loop_end\n#endif";
+	var lights_lambert_vertex = "vec3 diffuse = vec3( 1.0 );\nGeometricContext geometry;\ngeometry.position = mvPosition.xyz;\ngeometry.normal = normalize( transformedNormal );\ngeometry.viewDir = ( isOrthographic ) ? vec3( 0, 0, 1 ) : normalize( -mvPosition.xyz );\nGeometricContext backGeometry;\nbackGeometry.position = geometry.position;\nbackGeometry.normal = -geometry.normal;\nbackGeometry.viewDir = geometry.viewDir;\nvLightFront = vec3( 0.0 );\nvIndirectFront = vec3( 0.0 );\n#ifdef DOUBLE_SIDED\n\tvLightBack = vec3( 0.0 );\n\tvIndirectBack = vec3( 0.0 );\n#endif\nIncidentLight directLight;\nfloat dotNL;\nvec3 directLightColor_Diffuse;\nvIndirectFront += getAmbientLightIrradiance( ambientLightColor );\nvIndirectFront += getLightProbeIrradiance( lightProbe, geometry );\n#ifdef DOUBLE_SIDED\n\tvIndirectBack += getAmbientLightIrradiance( ambientLightColor );\n\tvIndirectBack += getLightProbeIrradiance( lightProbe, backGeometry );\n#endif\n#if NUM_POINT_LIGHTS > 0\n\t#pragma unroll_loop_start\n\tfor ( int i = 0; i < NUM_POINT_LIGHTS; i ++ ) {\n\t\tgetPointDirectLightIrradiance( pointLights[ i ], geometry, directLight );\n\t\tdotNL = dot( geometry.normal, directLight.direction );\n\t\tdirectLightColor_Diffuse = PI * directLight.color;\n\t\tvLightFront += saturate( dotNL ) * directLightColor_Diffuse;\n\t\t#ifdef DOUBLE_SIDED\n\t\t\tvLightBack += saturate( -dotNL ) * directLightColor_Diffuse;\n\t\t#endif\n\t}\n\t#pragma unroll_loop_end\n#endif\n#if NUM_SPOT_LIGHTS > 0\n\t#pragma unroll_loop_start\n\tfor ( int i = 0; i < NUM_SPOT_LIGHTS; i ++ ) {\n\t\tgetSpotDirectLightIrradiance( spotLights[ i ], geometry, directLight );\n\t\tdotNL = dot( geometry.normal, directLight.direction );\n\t\tdirectLightColor_Diffuse = PI * directLight.color;\n\t\tvLightFront += saturate( dotNL ) * directLightColor_Diffuse;\n\t\t#ifdef DOUBLE_SIDED\n\t\t\tvLightBack += saturate( -dotNL ) * directLightColor_Diffuse;\n\t\t#endif\n\t}\n\t#pragma unroll_loop_end\n#endif\n#if NUM_DIR_LIGHTS > 0\n\t#pragma unroll_loop_start\n\tfor ( int i = 0; i < NUM_DIR_LIGHTS; i ++ ) {\n\t\tgetDirectionalDirectLightIrradiance( directionalLights[ i ], geometry, directLight );\n\t\tdotNL = dot( geometry.normal, directLight.direction );\n\t\tdirectLightColor_Diffuse = PI * directLight.color;\n\t\tvLightFront += saturate( dotNL ) * directLightColor_Diffuse;\n\t\t#ifdef DOUBLE_SIDED\n\t\t\tvLightBack += saturate( -dotNL ) * directLightColor_Diffuse;\n\t\t#endif\n\t}\n\t#pragma unroll_loop_end\n#endif\n#if NUM_HEMI_LIGHTS > 0\n\t#pragma unroll_loop_start\n\tfor ( int i = 0; i < NUM_HEMI_LIGHTS; i ++ ) {\n\t\tvIndirectFront += getHemisphereLightIrradiance( hemisphereLights[ i ], geometry );\n\t\t#ifdef DOUBLE_SIDED\n\t\t\tvIndirectBack += getHemisphereLightIrradiance( hemisphereLights[ i ], backGeometry );\n\t\t#endif\n\t}\n\t#pragma unroll_loop_end\n#endif";
 
 	var lights_pars_begin = "uniform bool receiveShadow;\nuniform vec3 ambientLightColor;\nuniform vec3 lightProbe[ 9 ];\nvec3 shGetIrradianceAt( in vec3 normal, in vec3 shCoefficients[ 9 ] ) {\n\tfloat x = normal.x, y = normal.y, z = normal.z;\n\tvec3 result = shCoefficients[ 0 ] * 0.886227;\n\tresult += shCoefficients[ 1 ] * 2.0 * 0.511664 * y;\n\tresult += shCoefficients[ 2 ] * 2.0 * 0.511664 * z;\n\tresult += shCoefficients[ 3 ] * 2.0 * 0.511664 * x;\n\tresult += shCoefficients[ 4 ] * 2.0 * 0.429043 * x * y;\n\tresult += shCoefficients[ 5 ] * 2.0 * 0.429043 * y * z;\n\tresult += shCoefficients[ 6 ] * ( 0.743125 * z * z - 0.247708 );\n\tresult += shCoefficients[ 7 ] * 2.0 * 0.429043 * x * z;\n\tresult += shCoefficients[ 8 ] * 0.429043 * ( x * x - y * y );\n\treturn result;\n}\nvec3 getLightProbeIrradiance( const in vec3 lightProbe[ 9 ], const in GeometricContext geometry ) {\n\tvec3 worldNormal = inverseTransformDirection( geometry.normal, viewMatrix );\n\tvec3 irradiance = shGetIrradianceAt( worldNormal, lightProbe );\n\treturn irradiance;\n}\nvec3 getAmbientLightIrradiance( const in vec3 ambientLightColor ) {\n\tvec3 irradiance = ambientLightColor;\n\t#ifndef PHYSICALLY_CORRECT_LIGHTS\n\t\tirradiance *= PI;\n\t#endif\n\treturn irradiance;\n}\n#if NUM_DIR_LIGHTS > 0\n\tstruct DirectionalLight {\n\t\tvec3 direction;\n\t\tvec3 color;\n\t};\n\tuniform DirectionalLight directionalLights[ NUM_DIR_LIGHTS ];\n\t#if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS > 0\n\t\tstruct DirectionalLightShadow {\n\t\t\tfloat shadowBias;\n\t\t\tfloat shadowRadius;\n\t\t\tvec2 shadowMapSize;\n\t\t};\n\t\tuniform DirectionalLightShadow directionalLightShadows[ NUM_DIR_LIGHT_SHADOWS ];\n\t#endif\n\tvoid getDirectionalDirectLightIrradiance( const in DirectionalLight directionalLight, const in GeometricContext geometry, out IncidentLight directLight ) {\n\t\tdirectLight.color = directionalLight.color;\n\t\tdirectLight.direction = directionalLight.direction;\n\t\tdirectLight.visible = true;\n\t}\n#endif\n#if NUM_POINT_LIGHTS > 0\n\tstruct PointLight {\n\t\tvec3 position;\n\t\tvec3 color;\n\t\tfloat distance;\n\t\tfloat decay;\n\t};\n\tuniform PointLight pointLights[ NUM_POINT_LIGHTS ];\n\t#if defined( USE_SHADOWMAP ) && NUM_POINT_LIGHT_SHADOWS > 0\n\t\tstruct PointLightShadow {\n\t\t\tfloat shadowBias;\n\t\t\tfloat shadowRadius;\n\t\t\tvec2 shadowMapSize;\n\t\t\tfloat shadowCameraNear;\n\t\t\tfloat shadowCameraFar;\n\t\t};\n\t\tuniform PointLightShadow pointLightShadows[ NUM_POINT_LIGHT_SHADOWS ];\n\t#endif\n\tvoid getPointDirectLightIrradiance( const in PointLight pointLight, const in GeometricContext geometry, out IncidentLight directLight ) {\n\t\tvec3 lVector = pointLight.position - geometry.position;\n\t\tdirectLight.direction = normalize( lVector );\n\t\tfloat lightDistance = length( lVector );\n\t\tdirectLight.color = pointLight.color;\n\t\tdirectLight.color *= punctualLightIntensityToIrradianceFactor( lightDistance, pointLight.distance, pointLight.decay );\n\t\tdirectLight.visible = ( directLight.color != vec3( 0.0 ) );\n\t}\n#endif\n#if NUM_SPOT_LIGHTS > 0\n\tstruct SpotLight {\n\t\tvec3 position;\n\t\tvec3 direction;\n\t\tvec3 color;\n\t\tfloat distance;\n\t\tfloat decay;\n\t\tfloat coneCos;\n\t\tfloat penumbraCos;\n\t};\n\tuniform SpotLight spotLights[ NUM_SPOT_LIGHTS ];\n\t#if defined( USE_SHADOWMAP ) && NUM_SPOT_LIGHT_SHADOWS > 0\n\t\tstruct SpotLightShadow {\n\t\t\tfloat shadowBias;\n\t\t\tfloat shadowRadius;\n\t\t\tvec2 shadowMapSize;\n\t\t};\n\t\tuniform SpotLightShadow spotLightShadows[ NUM_SPOT_LIGHT_SHADOWS ];\n\t#endif\n\tvoid getSpotDirectLightIrradiance( const in SpotLight spotLight, const in GeometricContext geometry, out IncidentLight directLight  ) {\n\t\tvec3 lVector = spotLight.position - geometry.position;\n\t\tdirectLight.direction = normalize( lVector );\n\t\tfloat lightDistance = length( lVector );\n\t\tfloat angleCos = dot( directLight.direction, spotLight.direction );\n\t\tif ( angleCos > spotLight.coneCos ) {\n\t\t\tfloat spotEffect = smoothstep( spotLight.coneCos, spotLight.penumbraCos, angleCos );\n\t\t\tdirectLight.color = spotLight.color;\n\t\t\tdirectLight.color *= spotEffect * punctualLightIntensityToIrradianceFactor( lightDistance, spotLight.distance, spotLight.decay );\n\t\t\tdirectLight.visible = true;\n\t\t} else {\n\t\t\tdirectLight.color = vec3( 0.0 );\n\t\t\tdirectLight.visible = false;\n\t\t}\n\t}\n#endif\n#if NUM_RECT_AREA_LIGHTS > 0\n\tstruct RectAreaLight {\n\t\tvec3 color;\n\t\tvec3 position;\n\t\tvec3 halfWidth;\n\t\tvec3 halfHeight;\n\t};\n\tuniform sampler2D ltc_1;\tuniform sampler2D ltc_2;\n\tuniform RectAreaLight rectAreaLights[ NUM_RECT_AREA_LIGHTS ];\n#endif\n#if NUM_HEMI_LIGHTS > 0\n\tstruct HemisphereLight {\n\t\tvec3 direction;\n\t\tvec3 skyColor;\n\t\tvec3 groundColor;\n\t};\n\tuniform HemisphereLight hemisphereLights[ NUM_HEMI_LIGHTS ];\n\tvec3 getHemisphereLightIrradiance( const in HemisphereLight hemiLight, const in GeometricContext geometry ) {\n\t\tfloat dotNL = dot( geometry.normal, hemiLight.direction );\n\t\tfloat hemiDiffuseWeight = 0.5 * dotNL + 0.5;\n\t\tvec3 irradiance = mix( hemiLight.groundColor, hemiLight.skyColor, hemiDiffuseWeight );\n\t\t#ifndef PHYSICALLY_CORRECT_LIGHTS\n\t\t\tirradiance *= PI;\n\t\t#endif\n\t\treturn irradiance;\n\t}\n#endif";
 
@@ -14952,15 +15022,15 @@
 
 	var linedashed_vert = "uniform float scale;\nattribute float lineDistance;\nvarying float vLineDistance;\n#include <common>\n#include <color_pars_vertex>\n#include <fog_pars_vertex>\n#include <logdepthbuf_pars_vertex>\n#include <clipping_planes_pars_vertex>\nvoid main() {\n\tvLineDistance = scale * lineDistance;\n\t#include <color_vertex>\n\t#include <begin_vertex>\n\t#include <project_vertex>\n\t#include <logdepthbuf_vertex>\n\t#include <clipping_planes_vertex>\n\t#include <fog_vertex>\n}";
 
-	var meshbasic_frag = "uniform vec3 diffuse;\nuniform float opacity;\n#ifndef FLAT_SHADED\n\tvarying vec3 vNormal;\n#endif\n#include <common>\n#include <color_pars_fragment>\n#include <uv_pars_fragment>\n#include <uv2_pars_fragment>\n#include <map_pars_fragment>\n#include <alphamap_pars_fragment>\n#include <aomap_pars_fragment>\n#include <lightmap_pars_fragment>\n#include <envmap_common_pars_fragment>\n#include <envmap_pars_fragment>\n#include <cube_uv_reflection_fragment>\n#include <fog_pars_fragment>\n#include <specularmap_pars_fragment>\n#include <logdepthbuf_pars_fragment>\n#include <clipping_planes_pars_fragment>\nvoid main() {\n\t#include <clipping_planes_fragment>\n\tvec4 diffuseColor = vec4( diffuse, opacity );\n\t#include <logdepthbuf_fragment>\n\t#include <map_fragment>\n\t#include <color_fragment>\n\t#include <alphamap_fragment>\n\t#include <alphatest_fragment>\n\t#include <specularmap_fragment>\n\tReflectedLight reflectedLight = ReflectedLight( vec3( 0.0 ), vec3( 0.0 ), vec3( 0.0 ), vec3( 0.0 ) );\n\t#ifdef USE_LIGHTMAP\n\t\n\t\tvec4 lightMapTexel= texture2D( lightMap, vUv2 );\n\t\treflectedLight.indirectDiffuse += lightMapTexelToLinear( lightMapTexel ).rgb * lightMapIntensity;\n\t#else\n\t\treflectedLight.indirectDiffuse += vec3( 1.0 );\n\t#endif\n\t#include <aomap_fragment>\n\treflectedLight.indirectDiffuse *= diffuseColor.rgb;\n\tvec3 outgoingLight = reflectedLight.indirectDiffuse;\n\t#include <envmap_fragment>\n\tgl_FragColor = vec4( outgoingLight, diffuseColor.a );\n\t#include <tonemapping_fragment>\n\t#include <encodings_fragment>\n\t#include <fog_fragment>\n\t#include <premultiplied_alpha_fragment>\n}";
+	var meshbasic_frag = "uniform vec3 diffuse;\nuniform float opacity;\n#ifndef FLAT_SHADED\n\tvarying vec3 vNormal;\n#endif\n#include <common>\n#include <dithering_pars_fragment>\n#include <color_pars_fragment>\n#include <uv_pars_fragment>\n#include <uv2_pars_fragment>\n#include <map_pars_fragment>\n#include <alphamap_pars_fragment>\n#include <aomap_pars_fragment>\n#include <lightmap_pars_fragment>\n#include <envmap_common_pars_fragment>\n#include <envmap_pars_fragment>\n#include <cube_uv_reflection_fragment>\n#include <fog_pars_fragment>\n#include <specularmap_pars_fragment>\n#include <logdepthbuf_pars_fragment>\n#include <clipping_planes_pars_fragment>\nvoid main() {\n\t#include <clipping_planes_fragment>\n\tvec4 diffuseColor = vec4( diffuse, opacity );\n\t#include <logdepthbuf_fragment>\n\t#include <map_fragment>\n\t#include <color_fragment>\n\t#include <alphamap_fragment>\n\t#include <alphatest_fragment>\n\t#include <specularmap_fragment>\n\tReflectedLight reflectedLight = ReflectedLight( vec3( 0.0 ), vec3( 0.0 ), vec3( 0.0 ), vec3( 0.0 ) );\n\t#ifdef USE_LIGHTMAP\n\t\n\t\tvec4 lightMapTexel= texture2D( lightMap, vUv2 );\n\t\treflectedLight.indirectDiffuse += lightMapTexelToLinear( lightMapTexel ).rgb * lightMapIntensity;\n\t#else\n\t\treflectedLight.indirectDiffuse += vec3( 1.0 );\n\t#endif\n\t#include <aomap_fragment>\n\treflectedLight.indirectDiffuse *= diffuseColor.rgb;\n\tvec3 outgoingLight = reflectedLight.indirectDiffuse;\n\t#include <envmap_fragment>\n\tgl_FragColor = vec4( outgoingLight, diffuseColor.a );\n\t#include <tonemapping_fragment>\n\t#include <encodings_fragment>\n\t#include <fog_fragment>\n\t#include <premultiplied_alpha_fragment>\n\t#include <dithering_fragment>\n}";
 
 	var meshbasic_vert = "#include <common>\n#include <uv_pars_vertex>\n#include <uv2_pars_vertex>\n#include <envmap_pars_vertex>\n#include <color_pars_vertex>\n#include <fog_pars_vertex>\n#include <morphtarget_pars_vertex>\n#include <skinning_pars_vertex>\n#include <logdepthbuf_pars_vertex>\n#include <clipping_planes_pars_vertex>\nvoid main() {\n\t#include <uv_vertex>\n\t#include <uv2_vertex>\n\t#include <color_vertex>\n\t#include <skinbase_vertex>\n\t#ifdef USE_ENVMAP\n\t#include <beginnormal_vertex>\n\t#include <morphnormal_vertex>\n\t#include <skinnormal_vertex>\n\t#include <defaultnormal_vertex>\n\t#endif\n\t#include <begin_vertex>\n\t#include <morphtarget_vertex>\n\t#include <skinning_vertex>\n\t#include <project_vertex>\n\t#include <logdepthbuf_vertex>\n\t#include <worldpos_vertex>\n\t#include <clipping_planes_vertex>\n\t#include <envmap_vertex>\n\t#include <fog_vertex>\n}";
 
-	var meshlambert_frag = "uniform vec3 diffuse;\nuniform vec3 emissive;\nuniform float opacity;\nvarying vec3 vLightFront;\nvarying vec3 vIndirectFront;\n#ifdef DOUBLE_SIDED\n\tvarying vec3 vLightBack;\n\tvarying vec3 vIndirectBack;\n#endif\n#include <common>\n#include <packing>\n#include <dithering_pars_fragment>\n#include <color_pars_fragment>\n#include <uv_pars_fragment>\n#include <uv2_pars_fragment>\n#include <map_pars_fragment>\n#include <alphamap_pars_fragment>\n#include <aomap_pars_fragment>\n#include <lightmap_pars_fragment>\n#include <emissivemap_pars_fragment>\n#include <envmap_common_pars_fragment>\n#include <envmap_pars_fragment>\n#include <cube_uv_reflection_fragment>\n#include <bsdfs>\n#include <lights_pars_begin>\n#include <fog_pars_fragment>\n#include <shadowmap_pars_fragment>\n#include <shadowmask_pars_fragment>\n#include <specularmap_pars_fragment>\n#include <logdepthbuf_pars_fragment>\n#include <clipping_planes_pars_fragment>\nvoid main() {\n\t#include <clipping_planes_fragment>\n\tvec4 diffuseColor = vec4( diffuse, opacity );\n\tReflectedLight reflectedLight = ReflectedLight( vec3( 0.0 ), vec3( 0.0 ), vec3( 0.0 ), vec3( 0.0 ) );\n\tvec3 totalEmissiveRadiance = emissive;\n\t#include <logdepthbuf_fragment>\n\t#include <map_fragment>\n\t#include <color_fragment>\n\t#include <alphamap_fragment>\n\t#include <alphatest_fragment>\n\t#include <specularmap_fragment>\n\t#include <emissivemap_fragment>\n\treflectedLight.indirectDiffuse = getAmbientLightIrradiance( ambientLightColor );\n\t#ifdef DOUBLE_SIDED\n\t\treflectedLight.indirectDiffuse += ( gl_FrontFacing ) ? vIndirectFront : vIndirectBack;\n\t#else\n\t\treflectedLight.indirectDiffuse += vIndirectFront;\n\t#endif\n\t#include <lightmap_fragment>\n\treflectedLight.indirectDiffuse *= BRDF_Diffuse_Lambert( diffuseColor.rgb );\n\t#ifdef DOUBLE_SIDED\n\t\treflectedLight.directDiffuse = ( gl_FrontFacing ) ? vLightFront : vLightBack;\n\t#else\n\t\treflectedLight.directDiffuse = vLightFront;\n\t#endif\n\treflectedLight.directDiffuse *= BRDF_Diffuse_Lambert( diffuseColor.rgb ) * getShadowMask();\n\t#include <aomap_fragment>\n\tvec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + totalEmissiveRadiance;\n\t#include <envmap_fragment>\n\tgl_FragColor = vec4( outgoingLight, diffuseColor.a );\n\t#include <tonemapping_fragment>\n\t#include <encodings_fragment>\n\t#include <fog_fragment>\n\t#include <premultiplied_alpha_fragment>\n\t#include <dithering_fragment>\n}";
+	var meshlambert_frag = "uniform vec3 diffuse;\nuniform vec3 emissive;\nuniform float opacity;\nvarying vec3 vLightFront;\nvarying vec3 vIndirectFront;\n#ifdef DOUBLE_SIDED\n\tvarying vec3 vLightBack;\n\tvarying vec3 vIndirectBack;\n#endif\n#include <common>\n#include <packing>\n#include <dithering_pars_fragment>\n#include <color_pars_fragment>\n#include <uv_pars_fragment>\n#include <uv2_pars_fragment>\n#include <map_pars_fragment>\n#include <alphamap_pars_fragment>\n#include <aomap_pars_fragment>\n#include <lightmap_pars_fragment>\n#include <emissivemap_pars_fragment>\n#include <envmap_common_pars_fragment>\n#include <envmap_pars_fragment>\n#include <cube_uv_reflection_fragment>\n#include <bsdfs>\n#include <lights_pars_begin>\n#include <fog_pars_fragment>\n#include <shadowmap_pars_fragment>\n#include <shadowmask_pars_fragment>\n#include <specularmap_pars_fragment>\n#include <logdepthbuf_pars_fragment>\n#include <clipping_planes_pars_fragment>\nvoid main() {\n\t#include <clipping_planes_fragment>\n\tvec4 diffuseColor = vec4( diffuse, opacity );\n\tReflectedLight reflectedLight = ReflectedLight( vec3( 0.0 ), vec3( 0.0 ), vec3( 0.0 ), vec3( 0.0 ) );\n\tvec3 totalEmissiveRadiance = emissive;\n\t#include <logdepthbuf_fragment>\n\t#include <map_fragment>\n\t#include <color_fragment>\n\t#include <alphamap_fragment>\n\t#include <alphatest_fragment>\n\t#include <specularmap_fragment>\n\t#include <emissivemap_fragment>\n\t#ifdef DOUBLE_SIDED\n\t\treflectedLight.indirectDiffuse += ( gl_FrontFacing ) ? vIndirectFront : vIndirectBack;\n\t#else\n\t\treflectedLight.indirectDiffuse += vIndirectFront;\n\t#endif\n\t#include <lightmap_fragment>\n\treflectedLight.indirectDiffuse *= BRDF_Diffuse_Lambert( diffuseColor.rgb );\n\t#ifdef DOUBLE_SIDED\n\t\treflectedLight.directDiffuse = ( gl_FrontFacing ) ? vLightFront : vLightBack;\n\t#else\n\t\treflectedLight.directDiffuse = vLightFront;\n\t#endif\n\treflectedLight.directDiffuse *= BRDF_Diffuse_Lambert( diffuseColor.rgb ) * getShadowMask();\n\t#include <aomap_fragment>\n\tvec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + totalEmissiveRadiance;\n\t#include <envmap_fragment>\n\tgl_FragColor = vec4( outgoingLight, diffuseColor.a );\n\t#include <tonemapping_fragment>\n\t#include <encodings_fragment>\n\t#include <fog_fragment>\n\t#include <premultiplied_alpha_fragment>\n\t#include <dithering_fragment>\n}";
 
 	var meshlambert_vert = "#define LAMBERT\nvarying vec3 vLightFront;\nvarying vec3 vIndirectFront;\n#ifdef DOUBLE_SIDED\n\tvarying vec3 vLightBack;\n\tvarying vec3 vIndirectBack;\n#endif\n#include <common>\n#include <uv_pars_vertex>\n#include <uv2_pars_vertex>\n#include <envmap_pars_vertex>\n#include <bsdfs>\n#include <lights_pars_begin>\n#include <color_pars_vertex>\n#include <fog_pars_vertex>\n#include <morphtarget_pars_vertex>\n#include <skinning_pars_vertex>\n#include <shadowmap_pars_vertex>\n#include <logdepthbuf_pars_vertex>\n#include <clipping_planes_pars_vertex>\nvoid main() {\n\t#include <uv_vertex>\n\t#include <uv2_vertex>\n\t#include <color_vertex>\n\t#include <beginnormal_vertex>\n\t#include <morphnormal_vertex>\n\t#include <skinbase_vertex>\n\t#include <skinnormal_vertex>\n\t#include <defaultnormal_vertex>\n\t#include <begin_vertex>\n\t#include <morphtarget_vertex>\n\t#include <skinning_vertex>\n\t#include <project_vertex>\n\t#include <logdepthbuf_vertex>\n\t#include <clipping_planes_vertex>\n\t#include <worldpos_vertex>\n\t#include <envmap_vertex>\n\t#include <lights_lambert_vertex>\n\t#include <shadowmap_vertex>\n\t#include <fog_vertex>\n}";
 
-	var meshmatcap_frag = "#define MATCAP\nuniform vec3 diffuse;\nuniform float opacity;\nuniform sampler2D matcap;\nvarying vec3 vViewPosition;\n#ifndef FLAT_SHADED\n\tvarying vec3 vNormal;\n#endif\n#include <common>\n#include <color_pars_fragment>\n#include <uv_pars_fragment>\n#include <map_pars_fragment>\n#include <alphamap_pars_fragment>\n#include <fog_pars_fragment>\n#include <bumpmap_pars_fragment>\n#include <normalmap_pars_fragment>\n#include <logdepthbuf_pars_fragment>\n#include <clipping_planes_pars_fragment>\nvoid main() {\n\t#include <clipping_planes_fragment>\n\tvec4 diffuseColor = vec4( diffuse, opacity );\n\t#include <logdepthbuf_fragment>\n\t#include <map_fragment>\n\t#include <color_fragment>\n\t#include <alphamap_fragment>\n\t#include <alphatest_fragment>\n\t#include <normal_fragment_begin>\n\t#include <normal_fragment_maps>\n\tvec3 viewDir = normalize( vViewPosition );\n\tvec3 x = normalize( vec3( viewDir.z, 0.0, - viewDir.x ) );\n\tvec3 y = cross( viewDir, x );\n\tvec2 uv = vec2( dot( x, normal ), dot( y, normal ) ) * 0.495 + 0.5;\n\t#ifdef USE_MATCAP\n\t\tvec4 matcapColor = texture2D( matcap, uv );\n\t\tmatcapColor = matcapTexelToLinear( matcapColor );\n\t#else\n\t\tvec4 matcapColor = vec4( 1.0 );\n\t#endif\n\tvec3 outgoingLight = diffuseColor.rgb * matcapColor.rgb;\n\tgl_FragColor = vec4( outgoingLight, diffuseColor.a );\n\t#include <tonemapping_fragment>\n\t#include <encodings_fragment>\n\t#include <fog_fragment>\n\t#include <premultiplied_alpha_fragment>\n}";
+	var meshmatcap_frag = "#define MATCAP\nuniform vec3 diffuse;\nuniform float opacity;\nuniform sampler2D matcap;\nvarying vec3 vViewPosition;\n#ifndef FLAT_SHADED\n\tvarying vec3 vNormal;\n#endif\n#include <common>\n#include <dithering_pars_fragment>\n#include <color_pars_fragment>\n#include <uv_pars_fragment>\n#include <map_pars_fragment>\n#include <alphamap_pars_fragment>\n#include <fog_pars_fragment>\n#include <bumpmap_pars_fragment>\n#include <normalmap_pars_fragment>\n#include <logdepthbuf_pars_fragment>\n#include <clipping_planes_pars_fragment>\nvoid main() {\n\t#include <clipping_planes_fragment>\n\tvec4 diffuseColor = vec4( diffuse, opacity );\n\t#include <logdepthbuf_fragment>\n\t#include <map_fragment>\n\t#include <color_fragment>\n\t#include <alphamap_fragment>\n\t#include <alphatest_fragment>\n\t#include <normal_fragment_begin>\n\t#include <normal_fragment_maps>\n\tvec3 viewDir = normalize( vViewPosition );\n\tvec3 x = normalize( vec3( viewDir.z, 0.0, - viewDir.x ) );\n\tvec3 y = cross( viewDir, x );\n\tvec2 uv = vec2( dot( x, normal ), dot( y, normal ) ) * 0.495 + 0.5;\n\t#ifdef USE_MATCAP\n\t\tvec4 matcapColor = texture2D( matcap, uv );\n\t\tmatcapColor = matcapTexelToLinear( matcapColor );\n\t#else\n\t\tvec4 matcapColor = vec4( 1.0 );\n\t#endif\n\tvec3 outgoingLight = diffuseColor.rgb * matcapColor.rgb;\n\tgl_FragColor = vec4( outgoingLight, diffuseColor.a );\n\t#include <tonemapping_fragment>\n\t#include <encodings_fragment>\n\t#include <fog_fragment>\n\t#include <premultiplied_alpha_fragment>\n\t#include <dithering_fragment>\n}";
 
 	var meshmatcap_vert = "#define MATCAP\nvarying vec3 vViewPosition;\n#ifndef FLAT_SHADED\n\tvarying vec3 vNormal;\n#endif\n#include <common>\n#include <uv_pars_vertex>\n#include <color_pars_vertex>\n#include <displacementmap_pars_vertex>\n#include <fog_pars_vertex>\n#include <morphtarget_pars_vertex>\n#include <skinning_pars_vertex>\n#include <logdepthbuf_pars_vertex>\n#include <clipping_planes_pars_vertex>\nvoid main() {\n\t#include <uv_vertex>\n\t#include <color_vertex>\n\t#include <beginnormal_vertex>\n\t#include <morphnormal_vertex>\n\t#include <skinbase_vertex>\n\t#include <skinnormal_vertex>\n\t#include <defaultnormal_vertex>\n\t#ifndef FLAT_SHADED\n\t\tvNormal = normalize( transformedNormal );\n\t#endif\n\t#include <begin_vertex>\n\t#include <morphtarget_vertex>\n\t#include <skinning_vertex>\n\t#include <displacementmap_vertex>\n\t#include <project_vertex>\n\t#include <logdepthbuf_vertex>\n\t#include <clipping_planes_vertex>\n\t#include <fog_vertex>\n\tvViewPosition = - mvPosition.xyz;\n}";
 
@@ -20096,9 +20166,7 @@
 
 		}
 
-		function getDepthMaterial( object, material, light, shadowCameraNear, shadowCameraFar, type ) {
-
-			var geometry = object.geometry;
+		function getDepthMaterial( object, geometry, material, light, shadowCameraNear, shadowCameraFar, type ) {
 
 			var result = null;
 
@@ -20118,15 +20186,7 @@
 
 				if ( material.morphTargets === true ) {
 
-					if ( geometry.isBufferGeometry === true ) {
-
-						useMorphing = geometry.morphAttributes && geometry.morphAttributes.position && geometry.morphAttributes.position.length > 0;
-
-					} else if ( geometry.isGeometry === true ) {
-
-						useMorphing = geometry.morphTargets && geometry.morphTargets.length > 0;
-
-					}
+					useMorphing = geometry.morphAttributes && geometry.morphAttributes.position && geometry.morphAttributes.position.length > 0;
 
 				}
 
@@ -20245,7 +20305,7 @@
 
 							if ( groupMaterial && groupMaterial.visible ) {
 
-								var depthMaterial = getDepthMaterial( object, groupMaterial, light, shadowCamera.near, shadowCamera.far, type );
+								var depthMaterial = getDepthMaterial( object, geometry, groupMaterial, light, shadowCamera.near, shadowCamera.far, type );
 
 								_renderer.renderBufferDirect( shadowCamera, null, geometry, depthMaterial, object, group );
 
@@ -20255,7 +20315,7 @@
 
 					} else if ( material.visible ) {
 
-						var depthMaterial = getDepthMaterial( object, material, light, shadowCamera.near, shadowCamera.far, type );
+						var depthMaterial = getDepthMaterial( object, geometry, material, light, shadowCamera.near, shadowCamera.far, type );
 
 						_renderer.renderBufferDirect( shadowCamera, null, geometry, depthMaterial, object, null );
 
@@ -20733,6 +20793,20 @@
 					enabledAttributes[ i ] = 0;
 
 				}
+
+			}
+
+		}
+
+		function vertexAttribPointer( index, size, type, normalized, stride, offset ) {
+
+			if ( isWebGL2 === true && ( type === 5124 || type === 5125 ) ) {
+
+				gl.vertexAttribIPointer( index, size, type, normalized, stride, offset );
+
+			} else {
+
+				gl.vertexAttribPointer( index, size, type, normalized, stride, offset );
 
 			}
 
@@ -21254,6 +21328,7 @@
 			enableAttribute: enableAttribute,
 			enableAttributeAndDivisor: enableAttributeAndDivisor,
 			disableUnusedAttributes: disableUnusedAttributes,
+			vertexAttribPointer: vertexAttribPointer,
 			enable: enable,
 			disable: disable,
 
@@ -22807,6 +22882,143 @@
 	} );
 
 	/**
+	 * @author Mugen87 / https://github.com/Mugen87
+	 */
+
+	function WebXRController() {
+
+		this._targetRay = null;
+		this._grip = null;
+
+	}
+
+	Object.assign( WebXRController.prototype, {
+
+		constructor: WebXRController,
+
+		getTargetRaySpace: function () {
+
+			if ( this._targetRay === null ) {
+
+				this._targetRay = new Group();
+				this._targetRay.matrixAutoUpdate = false;
+				this._targetRay.visible = false;
+
+			}
+
+			return this._targetRay;
+
+		},
+
+		getGripSpace: function () {
+
+			if ( this._grip === null ) {
+
+				this._grip = new Group();
+				this._grip.matrixAutoUpdate = false;
+				this._grip.visible = false;
+
+			}
+
+			return this._grip;
+
+		},
+
+		dispatchEvent: function ( event ) {
+
+			if ( this._targetRay !== null ) {
+
+				this._targetRay.dispatchEvent( event );
+
+			}
+
+			if ( this._grip !== null ) {
+
+				this._grip.dispatchEvent( event );
+
+			}
+
+			return this;
+
+		},
+
+		disconnect: function ( inputSource ) {
+
+			this.dispatchEvent( { type: 'disconnected', data: inputSource } );
+
+			if ( this._targetRay !== null ) {
+
+				this._targetRay.visible = false;
+
+			}
+
+			if ( this._grip !== null ) {
+
+				this._grip.visible = false;
+
+			}
+
+			return this;
+
+		},
+
+		update: function ( inputSource, frame, referenceSpace ) {
+
+			var inputPose = null;
+			var gripPose = null;
+
+			var targetRay = this._targetRay;
+			var grip = this._grip;
+
+			if ( inputSource ) {
+
+				if ( targetRay !== null ) {
+
+					inputPose = frame.getPose( inputSource.targetRaySpace, referenceSpace );
+
+					if ( inputPose !== null ) {
+
+						targetRay.matrix.fromArray( inputPose.transform.matrix );
+						targetRay.matrix.decompose( targetRay.position, targetRay.rotation, targetRay.scale );
+
+					}
+
+				}
+
+				if ( grip !== null && inputSource.gripSpace ) {
+
+					gripPose = frame.getPose( inputSource.gripSpace, referenceSpace );
+
+					if ( gripPose !== null ) {
+
+						grip.matrix.fromArray( gripPose.transform.matrix );
+						grip.matrix.decompose( grip.position, grip.rotation, grip.scale );
+
+					}
+
+				}
+
+			}
+
+			if ( targetRay !== null ) {
+
+				targetRay.visible = ( inputPose !== null );
+
+			}
+
+			if ( grip !== null ) {
+
+				grip.visible = ( gripPose !== null );
+
+			}
+
+			return this;
+
+		}
+
+	} );
+
+	/**
 	 * @author mrdoob / http://mrdoob.com/
 	 */
 
@@ -22849,49 +23061,33 @@
 
 		this.isPresenting = false;
 
-		this.getController = function ( id ) {
+		this.getController = function ( index ) {
 
-			var controller = controllers[ id ];
+			var controller = controllers[ index ];
 
 			if ( controller === undefined ) {
 
-				controller = {};
-				controllers[ id ] = controller;
+				controller = new WebXRController();
+				controllers[ index ] = controller;
 
 			}
 
-			if ( controller.targetRay === undefined ) {
-
-				controller.targetRay = new Group();
-				controller.targetRay.matrixAutoUpdate = false;
-				controller.targetRay.visible = false;
-
-			}
-
-			return controller.targetRay;
+			return controller.getTargetRaySpace();
 
 		};
 
-		this.getControllerGrip = function ( id ) {
+		this.getControllerGrip = function ( index ) {
 
-			var controller = controllers[ id ];
+			var controller = controllers[ index ];
 
 			if ( controller === undefined ) {
 
-				controller = {};
-				controllers[ id ] = controller;
+				controller = new WebXRController();
+				controllers[ index ] = controller;
 
 			}
 
-			if ( controller.grip === undefined ) {
-
-				controller.grip = new Group();
-				controller.grip.matrixAutoUpdate = false;
-				controller.grip.visible = false;
-
-			}
-
-			return controller.grip;
+			return controller.getGripSpace();
 
 		};
 
@@ -22903,17 +23099,7 @@
 
 			if ( controller ) {
 
-				if ( controller.targetRay ) {
-
-					controller.targetRay.dispatchEvent( { type: event.type } );
-
-				}
-
-				if ( controller.grip ) {
-
-					controller.grip.dispatchEvent( { type: event.type } );
-
-				}
+				controller.dispatchEvent( { type: event.type } );
 
 			}
 
@@ -22923,19 +23109,7 @@
 
 			inputSourcesMap.forEach( function ( controller, inputSource ) {
 
-				if ( controller.targetRay ) {
-
-					controller.targetRay.dispatchEvent( { type: 'disconnected', data: inputSource } );
-					controller.targetRay.visible = false;
-
-				}
-
-				if ( controller.grip ) {
-
-					controller.grip.dispatchEvent( { type: 'disconnected', data: inputSource } );
-					controller.grip.visible = false;
-
-				}
+				controller.disconnect( inputSource );
 
 			} );
 
@@ -23057,18 +23231,7 @@
 
 				if ( controller ) {
 
-					if ( controller.targetRay ) {
-
-						controller.targetRay.dispatchEvent( { type: 'disconnected', data: inputSource } );
-
-					}
-
-					if ( controller.grip ) {
-
-						controller.grip.dispatchEvent( { type: 'disconnected', data: inputSource } );
-
-					}
-
+					controller.dispatchEvent( { type: 'disconnected', data: inputSource } );
 					inputSourcesMap.delete( inputSource );
 
 				}
@@ -23084,17 +23247,7 @@
 
 				if ( controller ) {
 
-					if ( controller.targetRay ) {
-
-						controller.targetRay.dispatchEvent( { type: 'connected', data: inputSource } );
-
-					}
-
-					if ( controller.grip ) {
-
-						controller.grip.dispatchEvent( { type: 'connected', data: inputSource } );
-
-					}
+					controller.dispatchEvent( { type: 'connected', data: inputSource } );
 
 				}
 
@@ -23270,53 +23423,9 @@
 			for ( var i = 0; i < controllers.length; i ++ ) {
 
 				var controller = controllers[ i ];
-
 				var inputSource = inputSources[ i ];
 
-				var inputPose = null;
-				var gripPose = null;
-
-				if ( inputSource ) {
-
-					if ( controller.targetRay ) {
-
-						inputPose = frame.getPose( inputSource.targetRaySpace, referenceSpace );
-
-						if ( inputPose !== null ) {
-
-							controller.targetRay.matrix.fromArray( inputPose.transform.matrix );
-							controller.targetRay.matrix.decompose( controller.targetRay.position, controller.targetRay.rotation, controller.targetRay.scale );
-
-						}
-
-					}
-
-					if ( controller.grip && inputSource.gripSpace ) {
-
-						gripPose = frame.getPose( inputSource.gripSpace, referenceSpace );
-
-						if ( gripPose !== null ) {
-
-							controller.grip.matrix.fromArray( gripPose.transform.matrix );
-							controller.grip.matrix.decompose( controller.grip.position, controller.grip.rotation, controller.grip.scale );
-
-						}
-
-					}
-
-				}
-
-				if ( controller.targetRay ) {
-
-					controller.targetRay.visible = inputPose !== null;
-
-				}
-
-				if ( controller.grip ) {
-
-					controller.grip.visible = gripPose !== null;
-
-				}
+				controller.update( inputSource, frame, referenceSpace );
 
 			}
 
@@ -23881,8 +23990,6 @@
 
 			animation.stop();
 
-			this.forceContextLoss();
-
 		};
 
 		// Events
@@ -24242,7 +24349,7 @@
 							}
 
 							_gl.bindBuffer( 34962, buffer );
-							_gl.vertexAttribPointer( programAttribute, size, type, normalized, stride * bytesPerElement, offset * bytesPerElement );
+							state.vertexAttribPointer( programAttribute, size, type, normalized, stride * bytesPerElement, offset * bytesPerElement );
 
 						} else {
 
@@ -24263,7 +24370,7 @@
 							}
 
 							_gl.bindBuffer( 34962, buffer );
-							_gl.vertexAttribPointer( programAttribute, size, type, normalized, 0, 0 );
+							state.vertexAttribPointer( programAttribute, size, type, normalized, 0, 0 );
 
 						}
 
@@ -24818,7 +24925,6 @@
 
 				materialProperties.program = program;
 				materialProperties.uniforms = parameters.uniforms;
-				materialProperties.environment = material.isMeshStandardMaterial ? scene.environment : null;
 				materialProperties.outputEncoding = _this.outputEncoding;
 				material.program = program;
 
@@ -24870,6 +24976,7 @@
 
 			}
 
+			materialProperties.environment = material.isMeshStandardMaterial ? scene.environment : null;
 			materialProperties.fog = scene.fog;
 
 			// store the light setup it was created for
@@ -26068,6 +26175,8 @@
 
 		this.copyTextureToTexture = function ( position, srcTexture, dstTexture, level ) {
 
+			if ( level === undefined ) { level = 0; }
+
 			var width = srcTexture.image.width;
 			var height = srcTexture.image.height;
 			var glFormat = utils.convert( dstTexture.format );
@@ -26077,13 +26186,24 @@
 
 			if ( srcTexture.isDataTexture ) {
 
-				_gl.texSubImage2D( 3553, level || 0, position.x, position.y, width, height, glFormat, glType, srcTexture.image.data );
+				_gl.texSubImage2D( 3553, level, position.x, position.y, width, height, glFormat, glType, srcTexture.image.data );
 
 			} else {
 
-				_gl.texSubImage2D( 3553, level || 0, position.x, position.y, glFormat, glType, srcTexture.image );
+				if ( srcTexture.isCompressedTexture ) {
+
+					_gl.compressedTexSubImage2D( 3553, level, position.x, position.y, srcTexture.mipmaps[ 0 ].width, srcTexture.mipmaps[ 0 ].height, glFormat, srcTexture.mipmaps[ 0 ].data );
+
+				} else {
+
+					_gl.texSubImage2D( 3553, level, position.x, position.y, glFormat, glType, srcTexture.image );
+
+				}
 
 			}
+
+			// Generate mipmaps only when copying level 0
+			if ( level === 0 && dstTexture.generateMipmaps ) { _gl.generateMipmap( 3553 ); }
 
 			state.unbindTexture();
 
@@ -29465,7 +29585,7 @@
 
 	/**
 	 * @author Mugen87 / https://github.com/Mugen87
-	 * Port from https://github.com/mapbox/earcut (v2.1.5)
+	 * Port from https://github.com/mapbox/earcut (v2.2.2)
 	 */
 
 	var Earcut = {
@@ -29621,7 +29741,7 @@
 
 				} else if ( pass === 1 ) {
 
-					ear = cureLocalIntersections( ear, triangles, dim );
+					ear = cureLocalIntersections( filterPoints( ear ), triangles, dim );
 					earcutLinked( ear, triangles, dim, minX, minY, invSize, 2 );
 
 					// as a last resort, try splitting the remaining polygon into two
@@ -29751,7 +29871,7 @@
 
 		} while ( p !== start );
 
-		return p;
+		return filterPoints( p );
 
 	}
 
@@ -29834,6 +29954,9 @@
 		if ( outerNode ) {
 
 			var b = splitPolygon( outerNode, hole );
+
+			// filter collinear points around the cuts
+			filterPoints( outerNode, outerNode.next );
 			filterPoints( b, b.next );
 
 		}
@@ -29878,7 +30001,7 @@
 
 		if ( ! m ) { return null; }
 
-		if ( hx === qx ) { return m.prev; } // hole touches outer segment; pick lower endpoint
+		if ( hx === qx ) { return m; } // hole touches outer segment; pick leftmost endpoint
 
 		// look for points inside the triangle of hole point, segment intersection and endpoint;
 		// if there are no points found, we have a valid connection;
@@ -29890,16 +30013,16 @@
 			tanMin = Infinity,
 			tan;
 
-		p = m.next;
+		p = m;
 
-		while ( p !== stop ) {
+		do {
 
 			if ( hx >= p.x && p.x >= mx && hx !== p.x &&
 					pointInTriangle( hy < my ? hx : qx, hy, mx, my, hy < my ? qx : hx, hy, p.x, p.y ) ) {
 
 				tan = Math.abs( hy - p.y ) / ( hx - p.x ); // tangential
 
-				if ( ( tan < tanMin || ( tan === tanMin && p.x > m.x ) ) && locallyInside( p, hole ) ) {
+				if ( locallyInside( p, hole ) && ( tan < tanMin || ( tan === tanMin && ( p.x > m.x || ( p.x === m.x && sectorContainsSector( m, p ) ) ) ) ) ) {
 
 					m = p;
 					tanMin = tan;
@@ -29910,9 +30033,16 @@
 
 			p = p.next;
 
-		}
+		} while ( p !== stop );
 
 		return m;
+
+	}
+
+	// whether sector in vertex m contains sector in vertex p in the same coordinates
+	function sectorContainsSector( m, p ) {
+
+		return area( m.prev, m, p.prev ) < 0 && area( p.next, m, m.next ) < 0;
 
 	}
 
@@ -30043,16 +30173,18 @@
 	function pointInTriangle( ax, ay, bx, by, cx, cy, px, py ) {
 
 		return ( cx - px ) * ( ay - py ) - ( ax - px ) * ( cy - py ) >= 0 &&
-			   ( ax - px ) * ( by - py ) - ( bx - px ) * ( ay - py ) >= 0 &&
-			   ( bx - px ) * ( cy - py ) - ( cx - px ) * ( by - py ) >= 0;
+				( ax - px ) * ( by - py ) - ( bx - px ) * ( ay - py ) >= 0 &&
+				( bx - px ) * ( cy - py ) - ( cx - px ) * ( by - py ) >= 0;
 
 	}
 
 	// check if a diagonal between two polygon nodes is valid (lies in polygon interior)
 	function isValidDiagonal( a, b ) {
 
-		return a.next.i !== b.i && a.prev.i !== b.i && ! intersectsPolygon( a, b ) &&
-			   locallyInside( a, b ) && locallyInside( b, a ) && middleInside( a, b );
+		return a.next.i !== b.i && a.prev.i !== b.i && ! intersectsPolygon( a, b ) && // dones't intersect other edges
+			( locallyInside( a, b ) && locallyInside( b, a ) && middleInside( a, b ) && // locally visible
+			( area( a.prev, a, b.prev ) || area( a, b.prev, b ) ) || // does not create opposite-facing sectors
+			equals( a, b ) && area( a.prev, a, a.next ) > 0 && area( b.prev, b, b.next ) > 0 ); // special zero-length case
 
 	}
 
@@ -30073,10 +30205,32 @@
 	// check if two segments intersect
 	function intersects( p1, q1, p2, q2 ) {
 
-		if ( ( equals( p1, p2 ) && equals( q1, q2 ) ) ||
-			( equals( p1, q2 ) && equals( p2, q1 ) ) ) { return true; }
-		return area( p1, q1, p2 ) > 0 !== area( p1, q1, q2 ) > 0 &&
-			   area( p2, q2, p1 ) > 0 !== area( p2, q2, q1 ) > 0;
+		var o1 = sign( area( p1, q1, p2 ) );
+		var o2 = sign( area( p1, q1, q2 ) );
+		var o3 = sign( area( p2, q2, p1 ) );
+		var o4 = sign( area( p2, q2, q1 ) );
+
+		if ( o1 !== o2 && o3 !== o4 ) { return true; } // general case
+
+		if ( o1 === 0 && onSegment( p1, p2, q1 ) ) { return true; } // p1, q1 and p2 are collinear and p2 lies on p1q1
+		if ( o2 === 0 && onSegment( p1, q2, q1 ) ) { return true; } // p1, q1 and q2 are collinear and q2 lies on p1q1
+		if ( o3 === 0 && onSegment( p2, p1, q2 ) ) { return true; } // p2, q2 and p1 are collinear and p1 lies on p2q2
+		if ( o4 === 0 && onSegment( p2, q1, q2 ) ) { return true; } // p2, q2 and q1 are collinear and q1 lies on p2q2
+
+		return false;
+
+	}
+
+	// for collinear points p, q, r, check if point q lies on segment pr
+	function onSegment( p, q, r ) {
+
+		return q.x <= Math.max( p.x, r.x ) && q.x >= Math.min( p.x, r.x ) && q.y <= Math.max( p.y, r.y ) && q.y >= Math.min( p.y, r.y );
+
+	}
+
+	function sign( num ) {
+
+		return num > 0 ? 1 : num < 0 ? - 1 : 0;
 
 	}
 
@@ -32488,8 +32642,6 @@
 	CircleBufferGeometry.prototype = Object.create( BufferGeometry.prototype );
 	CircleBufferGeometry.prototype.constructor = CircleBufferGeometry;
 
-
-
 	var Geometries = /*#__PURE__*/Object.freeze({
 		__proto__: null,
 		WireframeGeometry: WireframeGeometry,
@@ -33534,8 +33686,6 @@
 
 	};
 
-
-
 	var Materials = /*#__PURE__*/Object.freeze({
 		__proto__: null,
 		ShadowMaterial: ShadowMaterial,
@@ -33790,6 +33940,112 @@
 			clip.resetDuration();
 
 			return clip;
+
+		},
+
+		makeClipAdditive: function ( targetClip, referenceFrame, referenceClip, fps ) {
+
+			if ( referenceFrame === undefined ) { referenceFrame = 0; }
+			if ( referenceClip === undefined ) { referenceClip = targetClip; }
+			if ( fps === undefined || fps <= 0 ) { fps = 30; }
+
+			var numTracks = targetClip.tracks.length;
+			var referenceTime = referenceFrame / fps;
+
+			// Make each track's values relative to the values at the reference frame
+			for ( var i = 0; i < numTracks; ++ i ) {
+
+				var referenceTrack = referenceClip.tracks[ i ];
+				var referenceTrackType = referenceTrack.ValueTypeName;
+
+				// Skip this track if it's non-numeric
+				if ( referenceTrackType === 'bool' || referenceTrackType === 'string' ) { continue; }
+
+				// Find the track in the target clip whose name and type matches the reference track
+				var targetTrack = targetClip.tracks.find( function ( track ) {
+
+					return track.name === referenceTrack.name
+					&& track.ValueTypeName === referenceTrackType;
+
+				} );
+
+				if ( targetTrack === undefined ) { continue; }
+
+				var valueSize = referenceTrack.getValueSize();
+				var lastIndex = referenceTrack.times.length - 1;
+				var referenceValue;
+
+				// Find the value to subtract out of the track
+				if ( referenceTime <= referenceTrack.times[ 0 ] ) {
+
+					// Reference frame is earlier than the first keyframe, so just use the first keyframe
+					referenceValue = AnimationUtils.arraySlice( referenceTrack.values, 0, referenceTrack.valueSize );
+
+				} else if ( referenceTime >= referenceTrack.times[ lastIndex ] ) {
+
+					// Reference frame is after the last keyframe, so just use the last keyframe
+					var startIndex = lastIndex * valueSize;
+					referenceValue = AnimationUtils.arraySlice( referenceTrack.values, startIndex );
+
+				} else {
+
+					// Interpolate to the reference value
+					var interpolant = referenceTrack.createInterpolant();
+					interpolant.evaluate( referenceTime );
+					referenceValue = interpolant.resultBuffer;
+
+				}
+
+				// Conjugate the quaternion
+				if ( referenceTrackType === 'quaternion' ) {
+
+					var referenceQuat = new Quaternion(
+						referenceValue[ 0 ],
+						referenceValue[ 1 ],
+						referenceValue[ 2 ],
+						referenceValue[ 3 ]
+					).normalize().conjugate();
+					referenceQuat.toArray( referenceValue );
+
+				}
+
+				// Subtract the reference value from all of the track values
+
+				var numTimes = targetTrack.times.length;
+				for ( var j = 0; j < numTimes; ++ j ) {
+
+					var valueStart = j * valueSize;
+
+					if ( referenceTrackType === 'quaternion' ) {
+
+						// Multiply the conjugate for quaternion track types
+						Quaternion.multiplyQuaternionsFlat(
+							targetTrack.values,
+							valueStart,
+							referenceValue,
+							0,
+							targetTrack.values,
+							valueStart
+						);
+
+					} else {
+
+						// Subtract each value for all other numeric track types
+						for ( var k = 0; k < valueSize; ++ k ) {
+
+							targetTrack.values[ valueStart + k ] -= referenceValue[ k ];
+
+						}
+
+					}
+
+				}
+
+			}
+
+			targetClip.blendMode = AdditiveAnimationBlendMode;
+
+			return targetClip;
 
 		}
 
@@ -34969,11 +35225,12 @@
 	 * @author David Sarno / http://lighthaus.us/
 	 */
 
-	function AnimationClip( name, duration, tracks ) {
+	function AnimationClip( name, duration, tracks, blendMode ) {
 
 		this.name = name;
 		this.tracks = tracks;
 		this.duration = ( duration !== undefined ) ? duration : - 1;
+		this.blendMode = ( blendMode !== undefined ) ? blendMode : NormalAnimationBlendMode;
 
 		this.uuid = MathUtils.generateUUID();
 
@@ -35077,7 +35334,7 @@
 
 			}
 
-			return new AnimationClip( json.name, json.duration, tracks );
+			return new AnimationClip( json.name, json.duration, tracks, json.blendMode );
 
 		},
 
@@ -35091,7 +35348,8 @@
 				'name': clip.name,
 				'duration': clip.duration,
 				'tracks': tracks,
-				'uuid': clip.uuid
+				'uuid': clip.uuid,
+				'blendMode': clip.blendMode
 
 			};
 
@@ -35253,6 +35511,7 @@
 			// automatic length determination in AnimationClip.
 			var duration = animation.length || - 1;
 			var fps = animation.fps || 30;
+			var blendMode = animation.blendMode;
 
 			var hierarchyTracks = animation.hierarchy || [];
 
@@ -35334,7 +35593,7 @@
 
 			}
 
-			var clip = new AnimationClip( clipName, duration, tracks );
+			var clip = new AnimationClip( clipName, duration, tracks, blendMode );
 
 			return clip;
 
@@ -35410,7 +35669,7 @@
 
 			}
 
-			return new AnimationClip( this.name, this.duration, tracks );
+			return new AnimationClip( this.name, this.duration, tracks, this.blendMode );
 
 		}
 
@@ -37860,8 +38119,6 @@
 
 	};
 
-
-
 	var Curves = /*#__PURE__*/Object.freeze({
 		__proto__: null,
 		ArcCurve: ArcCurve,
@@ -39164,6 +39421,311 @@
 
 			data.object.width = this.width;
 			data.object.height = this.height;
+
+			return data;
+
+		}
+
+	} );
+
+	/**
+	 * @author bhouston / http://clara.io
+	 * @author WestLangley / http://github.com/WestLangley
+	 *
+	 * Primary reference:
+	 *   https://graphics.stanford.edu/papers/envmap/envmap.pdf
+	 *
+	 * Secondary reference:
+	 *   https://www.ppsloan.org/publications/StupidSH36.pdf
+	 */
+
+	// 3-band SH defined by 9 coefficients
+
+	function SphericalHarmonics3() {
+
+		this.coefficients = [];
+
+		for ( var i = 0; i < 9; i ++ ) {
+
+			this.coefficients.push( new Vector3() );
+
+		}
+
+	}
+
+	Object.assign( SphericalHarmonics3.prototype, {
+
+		isSphericalHarmonics3: true,
+
+		set: function ( coefficients ) {
+
+			for ( var i = 0; i < 9; i ++ ) {
+
+				this.coefficients[ i ].copy( coefficients[ i ] );
+
+			}
+
+			return this;
+
+		},
+
+		zero: function () {
+
+			for ( var i = 0; i < 9; i ++ ) {
+
+				this.coefficients[ i ].set( 0, 0, 0 );
+
+			}
+
+			return this;
+
+		},
+
+		// get the radiance in the direction of the normal
+		// target is a Vector3
+		getAt: function ( normal, target ) {
+
+			// normal is assumed to be unit length
+
+			var x = normal.x, y = normal.y, z = normal.z;
+
+			var coeff = this.coefficients;
+
+			// band 0
+			target.copy( coeff[ 0 ] ).multiplyScalar( 0.282095 );
+
+			// band 1
+			target.addScaledVector( coeff[ 1 ], 0.488603 * y );
+			target.addScaledVector( coeff[ 2 ], 0.488603 * z );
+			target.addScaledVector( coeff[ 3 ], 0.488603 * x );
+
+			// band 2
+			target.addScaledVector( coeff[ 4 ], 1.092548 * ( x * y ) );
+			target.addScaledVector( coeff[ 5 ], 1.092548 * ( y * z ) );
+			target.addScaledVector( coeff[ 6 ], 0.315392 * ( 3.0 * z * z - 1.0 ) );
+			target.addScaledVector( coeff[ 7 ], 1.092548 * ( x * z ) );
+			target.addScaledVector( coeff[ 8 ], 0.546274 * ( x * x - y * y ) );
+
+			return target;
+
+		},
+
+		// get the irradiance (radiance convolved with cosine lobe) in the direction of the normal
+		// target is a Vector3
+		// https://graphics.stanford.edu/papers/envmap/envmap.pdf
+		getIrradianceAt: function ( normal, target ) {
+
+			// normal is assumed to be unit length
+
+			var x = normal.x, y = normal.y, z = normal.z;
+
+			var coeff = this.coefficients;
+
+			// band 0
+			target.copy( coeff[ 0 ] ).multiplyScalar( 0.886227 ); // π * 0.282095
+
+			// band 1
+			target.addScaledVector( coeff[ 1 ], 2.0 * 0.511664 * y ); // ( 2 * π / 3 ) * 0.488603
+			target.addScaledVector( coeff[ 2 ], 2.0 * 0.511664 * z );
+			target.addScaledVector( coeff[ 3 ], 2.0 * 0.511664 * x );
+
+			// band 2
+			target.addScaledVector( coeff[ 4 ], 2.0 * 0.429043 * x * y ); // ( π / 4 ) * 1.092548
+			target.addScaledVector( coeff[ 5 ], 2.0 * 0.429043 * y * z );
+			target.addScaledVector( coeff[ 6 ], 0.743125 * z * z - 0.247708 ); // ( π / 4 ) * 0.315392 * 3
+			target.addScaledVector( coeff[ 7 ], 2.0 * 0.429043 * x * z );
+			target.addScaledVector( coeff[ 8 ], 0.429043 * ( x * x - y * y ) ); // ( π / 4 ) * 0.546274
+
+			return target;
+
+		},
+
+		add: function ( sh ) {
+
+			for ( var i = 0; i < 9; i ++ ) {
+
+				this.coefficients[ i ].add( sh.coefficients[ i ] );
+
+			}
+
+			return this;
+
+		},
+
+		addScaledSH: function ( sh, s ) {
+
+			for ( var i = 0; i < 9; i ++ ) {
+
+				this.coefficients[ i ].addScaledVector( sh.coefficients[ i ], s );
+
+			}
+
+			return this;
+
+		},
+
+		scale: function ( s ) {
+
+			for ( var i = 0; i < 9; i ++ ) {
+
+				this.coefficients[ i ].multiplyScalar( s );
+
+			}
+
+			return this;
+
+		},
+
+		lerp: function ( sh, alpha ) {
+
+			for ( var i = 0; i < 9; i ++ ) {
+
+				this.coefficients[ i ].lerp( sh.coefficients[ i ], alpha );
+
+			}
+
+			return this;
+
+		},
+
+		equals: function ( sh ) {
+
+			for ( var i = 0; i < 9; i ++ ) {
+
+				if ( ! this.coefficients[ i ].equals( sh.coefficients[ i ] ) ) {
+
+					return false;
+
+				}
+
+			}
+
+			return true;
+
+		},
+
+		copy: function ( sh ) {
+
+			return this.set( sh.coefficients );
+
+		},
+
+		clone: function () {
+
+			return new this.constructor().copy( this );
+
+		},
+
+		fromArray: function ( array, offset ) {
+
+			if ( offset === undefined ) { offset = 0; }
+
+			var coefficients = this.coefficients;
+
+			for ( var i = 0; i < 9; i ++ ) {
+
+				coefficients[ i ].fromArray( array, offset + ( i * 3 ) );
+
+			}
+
+			return this;
+
+		},
+
+		toArray: function ( array, offset ) {
+
+			if ( array === undefined ) { array = []; }
+			if ( offset === undefined ) { offset = 0; }
+
+			var coefficients = this.coefficients;
+
+			for ( var i = 0; i < 9; i ++ ) {
+
+				coefficients[ i ].toArray( array, offset + ( i * 3 ) );
+
+			}
+
+			return array;
+
+		}
+
+	} );
+
+	Object.assign( SphericalHarmonics3, {
+
+		// evaluate the basis functions
+		// shBasis is an Array[ 9 ]
+		getBasisAt: function ( normal, shBasis ) {
+
+			// normal is assumed to be unit length
+
+			var x = normal.x, y = normal.y, z = normal.z;
+
+			// band 0
+			shBasis[ 0 ] = 0.282095;
+
+			// band 1
+			shBasis[ 1 ] = 0.488603 * y;
+			shBasis[ 2 ] = 0.488603 * z;
+			shBasis[ 3 ] = 0.488603 * x;
+
+			// band 2
+			shBasis[ 4 ] = 1.092548 * x * y;
+			shBasis[ 5 ] = 1.092548 * y * z;
+			shBasis[ 6 ] = 0.315392 * ( 3 * z * z - 1 );
+			shBasis[ 7 ] = 1.092548 * x * z;
+			shBasis[ 8 ] = 0.546274 * ( x * x - y * y );
+
+		}
+
+	} );
+
+	/**
+	 * @author WestLangley / http://github.com/WestLangley
+	 *
+	 * A LightProbe is a source of indirect-diffuse light
+	 */
+
+	function LightProbe( sh, intensity ) {
+
+		Light.call( this, undefined, intensity );
+
+		this.type = 'LightProbe';
+
+		this.sh = ( sh !== undefined ) ? sh : new SphericalHarmonics3();
+
+	}
+
+	LightProbe.prototype = Object.assign( Object.create( Light.prototype ), {
+
+		constructor: LightProbe,
+
+		isLightProbe: true,
+
+		copy: function ( source ) {
+
+			Light.prototype.copy.call( this, source );
+
+			this.sh.copy( source.sh );
+
+			return this;
+
+		},
+
+		fromJSON: function ( json ) {
+
+			this.intensity = json.intensity; // TODO: Move this bit to Light.fromJSON();
+			this.sh.fromArray( json.sh );
+
+			return this;
+
+		},
+
+		toJSON: function ( meta ) {
+
+			var data = Light.prototype.toJSON.call( this, meta );
+
+			data.object.sh = this.sh.toArray();
 
 			return data;
 
@@ -40492,6 +41054,12 @@
 
 					break;
 
+				case 'LightProbe':
+
+					object = new LightProbe().fromJSON( data );
+
+					break;
+
 				case 'SkinnedMesh':
 
 					console.warn( 'THREE.ObjectLoader.parseObject() does not support SkinnedMesh yet.' );
@@ -41329,301 +41897,6 @@
 	} );
 
 	/**
-	 * @author bhouston / http://clara.io
-	 * @author WestLangley / http://github.com/WestLangley
-	 *
-	 * Primary reference:
-	 *   https://graphics.stanford.edu/papers/envmap/envmap.pdf
-	 *
-	 * Secondary reference:
-	 *   https://www.ppsloan.org/publications/StupidSH36.pdf
-	 */
-
-	// 3-band SH defined by 9 coefficients
-
-	function SphericalHarmonics3() {
-
-		this.coefficients = [];
-
-		for ( var i = 0; i < 9; i ++ ) {
-
-			this.coefficients.push( new Vector3() );
-
-		}
-
-	}
-
-	Object.assign( SphericalHarmonics3.prototype, {
-
-		isSphericalHarmonics3: true,
-
-		set: function ( coefficients ) {
-
-			for ( var i = 0; i < 9; i ++ ) {
-
-				this.coefficients[ i ].copy( coefficients[ i ] );
-
-			}
-
-			return this;
-
-		},
-
-		zero: function () {
-
-			for ( var i = 0; i < 9; i ++ ) {
-
-				this.coefficients[ i ].set( 0, 0, 0 );
-
-			}
-
-			return this;
-
-		},
-
-		// get the radiance in the direction of the normal
-		// target is a Vector3
-		getAt: function ( normal, target ) {
-
-			// normal is assumed to be unit length
-
-			var x = normal.x, y = normal.y, z = normal.z;
-
-			var coeff = this.coefficients;
-
-			// band 0
-			target.copy( coeff[ 0 ] ).multiplyScalar( 0.282095 );
-
-			// band 1
-			target.addScaledVector( coeff[ 1 ], 0.488603 * y );
-			target.addScaledVector( coeff[ 2 ], 0.488603 * z );
-			target.addScaledVector( coeff[ 3 ], 0.488603 * x );
-
-			// band 2
-			target.addScaledVector( coeff[ 4 ], 1.092548 * ( x * y ) );
-			target.addScaledVector( coeff[ 5 ], 1.092548 * ( y * z ) );
-			target.addScaledVector( coeff[ 6 ], 0.315392 * ( 3.0 * z * z - 1.0 ) );
-			target.addScaledVector( coeff[ 7 ], 1.092548 * ( x * z ) );
-			target.addScaledVector( coeff[ 8 ], 0.546274 * ( x * x - y * y ) );
-
-			return target;
-
-		},
-
-		// get the irradiance (radiance convolved with cosine lobe) in the direction of the normal
-		// target is a Vector3
-		// https://graphics.stanford.edu/papers/envmap/envmap.pdf
-		getIrradianceAt: function ( normal, target ) {
-
-			// normal is assumed to be unit length
-
-			var x = normal.x, y = normal.y, z = normal.z;
-
-			var coeff = this.coefficients;
-
-			// band 0
-			target.copy( coeff[ 0 ] ).multiplyScalar( 0.886227 ); // π * 0.282095
-
-			// band 1
-			target.addScaledVector( coeff[ 1 ], 2.0 * 0.511664 * y ); // ( 2 * π / 3 ) * 0.488603
-			target.addScaledVector( coeff[ 2 ], 2.0 * 0.511664 * z );
-			target.addScaledVector( coeff[ 3 ], 2.0 * 0.511664 * x );
-
-			// band 2
-			target.addScaledVector( coeff[ 4 ], 2.0 * 0.429043 * x * y ); // ( π / 4 ) * 1.092548
-			target.addScaledVector( coeff[ 5 ], 2.0 * 0.429043 * y * z );
-			target.addScaledVector( coeff[ 6 ], 0.743125 * z * z - 0.247708 ); // ( π / 4 ) * 0.315392 * 3
-			target.addScaledVector( coeff[ 7 ], 2.0 * 0.429043 * x * z );
-			target.addScaledVector( coeff[ 8 ], 0.429043 * ( x * x - y * y ) ); // ( π / 4 ) * 0.546274
-
-			return target;
-
-		},
-
-		add: function ( sh ) {
-
-			for ( var i = 0; i < 9; i ++ ) {
-
-				this.coefficients[ i ].add( sh.coefficients[ i ] );
-
-			}
-
-			return this;
-
-		},
-
-		addScaledSH: function ( sh, s ) {
-
-			for ( var i = 0; i < 9; i ++ ) {
-
-				this.coefficients[ i ].addScaledVector( sh.coefficients[ i ], s );
-
-			}
-
-			return this;
-
-		},
-
-		scale: function ( s ) {
-
-			for ( var i = 0; i < 9; i ++ ) {
-
-				this.coefficients[ i ].multiplyScalar( s );
-
-			}
-
-			return this;
-
-		},
-
-		lerp: function ( sh, alpha ) {
-
-			for ( var i = 0; i < 9; i ++ ) {
-
-				this.coefficients[ i ].lerp( sh.coefficients[ i ], alpha );
-
-			}
-
-			return this;
-
-		},
-
-		equals: function ( sh ) {
-
-			for ( var i = 0; i < 9; i ++ ) {
-
-				if ( ! this.coefficients[ i ].equals( sh.coefficients[ i ] ) ) {
-
-					return false;
-
-				}
-
-			}
-
-			return true;
-
-		},
-
-		copy: function ( sh ) {
-
-			return this.set( sh.coefficients );
-
-		},
-
-		clone: function () {
-
-			return new this.constructor().copy( this );
-
-		},
-
-		fromArray: function ( array, offset ) {
-
-			if ( offset === undefined ) { offset = 0; }
-
-			var coefficients = this.coefficients;
-
-			for ( var i = 0; i < 9; i ++ ) {
-
-				coefficients[ i ].fromArray( array, offset + ( i * 3 ) );
-
-			}
-
-			return this;
-
-		},
-
-		toArray: function ( array, offset ) {
-
-			if ( array === undefined ) { array = []; }
-			if ( offset === undefined ) { offset = 0; }
-
-			var coefficients = this.coefficients;
-
-			for ( var i = 0; i < 9; i ++ ) {
-
-				coefficients[ i ].toArray( array, offset + ( i * 3 ) );
-
-			}
-
-			return array;
-
-		}
-
-	} );
-
-	Object.assign( SphericalHarmonics3, {
-
-		// evaluate the basis functions
-		// shBasis is an Array[ 9 ]
-		getBasisAt: function ( normal, shBasis ) {
-
-			// normal is assumed to be unit length
-
-			var x = normal.x, y = normal.y, z = normal.z;
-
-			// band 0
-			shBasis[ 0 ] = 0.282095;
-
-			// band 1
-			shBasis[ 1 ] = 0.488603 * y;
-			shBasis[ 2 ] = 0.488603 * z;
-			shBasis[ 3 ] = 0.488603 * x;
-
-			// band 2
-			shBasis[ 4 ] = 1.092548 * x * y;
-			shBasis[ 5 ] = 1.092548 * y * z;
-			shBasis[ 6 ] = 0.315392 * ( 3 * z * z - 1 );
-			shBasis[ 7 ] = 1.092548 * x * z;
-			shBasis[ 8 ] = 0.546274 * ( x * x - y * y );
-
-		}
-
-	} );
-
-	/**
-	 * @author WestLangley / http://github.com/WestLangley
-	 *
-	 * A LightProbe is a source of indirect-diffuse light
-	 */
-
-	function LightProbe( sh, intensity ) {
-
-		Light.call( this, undefined, intensity );
-
-		this.sh = ( sh !== undefined ) ? sh : new SphericalHarmonics3();
-
-	}
-
-	LightProbe.prototype = Object.assign( Object.create( Light.prototype ), {
-
-		constructor: LightProbe,
-
-		isLightProbe: true,
-
-		copy: function ( source ) {
-
-			Light.prototype.copy.call( this, source );
-
-			this.sh.copy( source.sh );
-			this.intensity = source.intensity;
-
-			return this;
-
-		},
-
-		toJSON: function ( meta ) {
-
-			var data = Light.prototype.toJSON.call( this, meta );
-
-			// data.sh = this.sh.toArray(); // todo
-
-			return data;
-
-		}
-
-	} );
-
-	/**
 	 * @author WestLangley / http://github.com/WestLangley
 	 */
 
@@ -42050,7 +42323,7 @@
 		this.sourceType = 'empty';
 
 		this._startedAt = 0;
-		this._pausedAt = 0;
+		this._progress = 0;
 
 		this.filters = [];
 
@@ -42136,7 +42409,7 @@
 			source.loopStart = this.loopStart;
 			source.loopEnd = this.loopEnd;
 			source.onended = this.onEnded.bind( this );
-			source.start( this._startedAt, this._pausedAt + this.offset, this.duration );
+			source.start( this._startedAt, this._progress + this.offset, this.duration );
 
 			this.isPlaying = true;
 
@@ -42160,7 +42433,17 @@
 
 			if ( this.isPlaying === true ) {
 
-				this._pausedAt += Math.max( this.context.currentTime - this._startedAt, 0 ) * this.playbackRate;
+				// update current progress
+
+				this._progress += Math.max( this.context.currentTime - this._startedAt, 0 ) * this.playbackRate;
+
+				if ( this.loop === true ) {
+
+					// ensure _progress does not exceed duration with looped audios
+
+					this._progress = this._progress % ( this.duration || this.buffer.duration );
+
+				}
 
 				this.source.stop();
 				this.source.onended = null;
@@ -42182,7 +42465,7 @@
 
 			}
 
-			this._pausedAt = 0;
+			this._progress = 0;
 
 			this.source.stop();
 			this.source.onended = null;
@@ -42586,28 +42869,11 @@
 		this.binding = binding;
 		this.valueSize = valueSize;
 
-		var bufferType = Float64Array,
-			mixFunction;
+		var mixFunction,
+			mixFunctionAdditive,
+			setIdentity;
 
-		switch ( typeName ) {
-
-			case 'quaternion':
-				mixFunction = this._slerp;
-				break;
-
-			case 'string':
-			case 'bool':
-				bufferType = Array;
-				mixFunction = this._select;
-				break;
-
-			default:
-				mixFunction = this._lerp;
-
-		}
-
-		this.buffer = new bufferType( valueSize * 4 );
-		// layout: [ incoming | accu0 | accu1 | orig ]
+		// buffer layout: [ incoming | accu0 | accu1 | orig | addAccu | (optional work) ]
 		//
 		// interpolators can use .buffer as their .result
 		// the data then goes to 'incoming'
@@ -42617,10 +42883,53 @@
 		// changes
 		//
 		// 'orig' stores the original state of the property
+		//
+		// 'add' is used for additive cumulative results
+		//
+		// 'work' is optional and is only present for quaternion types. It is used
+		// to store intermediate quaternion multiplication results
+
+		switch ( typeName ) {
+
+			case 'quaternion':
+				mixFunction = this._slerp;
+				mixFunctionAdditive = this._slerpAdditive;
+				setIdentity = this._setAdditiveIdentityQuaternion;
+
+				this.buffer = new Float64Array( 24 );
+				this._workIndex = 5;
+				break;
+
+			case 'string':
+			case 'bool':
+				mixFunction = this._select;
+
+				// Use the regular mix function and for additive on these types,
+				// additive is not relevant for non-numeric types
+				mixFunctionAdditive = this._select;
+
+				setIdentity = this._setAdditiveIdentityOther;
+
+				this.buffer = new Array( valueSize * 5 );
+				break;
+
+			default:
+				mixFunction = this._lerp;
+				mixFunctionAdditive = this._lerpAdditive;
+				setIdentity = this._setAdditiveIdentityNumeric;
+
+				this.buffer = new Float64Array( valueSize * 5 );
+
+		}
 
 		this._mixBufferRegion = mixFunction;
+		this._mixBufferRegionAdditive = mixFunctionAdditive;
+		this._setIdentity = setIdentity;
+		this._origIndex = 3;
+		this._addIndex = 4;
 
 		this.cumulativeWeight = 0;
+		this.cumulativeWeightAdditive = 0;
 
 		this.useCount = 0;
 		this.referenceCount = 0;
@@ -42667,6 +42976,28 @@
 
 		},
 
+		// accumulate data in the 'incoming' region into 'add'
+		accumulateAdditive: function ( weight ) {
+
+			var buffer = this.buffer,
+				stride = this.valueSize,
+				offset = stride * this._addIndex;
+
+			if ( this.cumulativeWeightAdditive === 0 ) {
+
+				// add = identity
+
+				this._setIdentity();
+
+			}
+
+			// add := add + incoming * weight
+
+			this._mixBufferRegionAdditive( buffer, offset, 0, weight, stride );
+			this.cumulativeWeightAdditive += weight;
+
+		},
+
 		// apply the state of 'accu<i>' to the binding when accus differ
 		apply: function ( accuIndex ) {
 
@@ -42675,19 +43006,29 @@
 				offset = accuIndex * stride + stride,
 
 				weight = this.cumulativeWeight,
+				weightAdditive = this.cumulativeWeightAdditive,
 
 				binding = this.binding;
 
 			this.cumulativeWeight = 0;
+			this.cumulativeWeightAdditive = 0;
 
 			if ( weight < 1 ) {
 
 				// accuN := accuN + original * ( 1 - cumulativeWeight )
 
-				var originalValueOffset = stride * 3;
+				var originalValueOffset = stride * this._origIndex;
 
 				this._mixBufferRegion(
 					buffer, offset, originalValueOffset, 1 - weight, stride );
+
+			}
+
+			if ( weightAdditive > 0 ) {
+
+				// accuN := accuN + additive accuN
+
+				this._mixBufferRegionAdditive( buffer, offset, this._addIndex * stride, 1, stride );
 
 			}
 
@@ -42714,7 +43055,7 @@
 			var buffer = this.buffer,
 				stride = this.valueSize,
 
-				originalValueOffset = stride * 3;
+				originalValueOffset = stride * this._origIndex;
 
 			binding.getValue( buffer, originalValueOffset );
 
@@ -42725,7 +43066,11 @@
 
 			}
 
+			// Add to identity for additive
+			this._setIdentity();
+
 			this.cumulativeWeight = 0;
+			this.cumulativeWeightAdditive = 0;
 
 		},
 
@@ -42734,6 +43079,30 @@
 
 			var originalValueOffset = this.valueSize * 3;
 			this.binding.setValue( this.buffer, originalValueOffset );
+
+		},
+
+		_setAdditiveIdentityNumeric: function () {
+
+			var startIndex = this._addIndex * this.valueSize;
+
+			this.buffer.fill( 0, startIndex, startIndex + this.valueSize );
+
+		},
+
+		_setAdditiveIdentityQuaternion: function () {
+
+			this._setAdditiveIdentityNumeric();
+			this.buffer[ this._addIndex * 4 + 3 ] = 1;
+
+		},
+
+		_setAdditiveIdentityOther: function () {
+
+			var startIndex = this._origIndex * this.valueSize;
+			var targetIndex = this._addIndex * this.valueSize;
+
+			this.buffer.copyWithin( targetIndex, startIndex, this.valueSize );
 
 		},
 
@@ -42760,6 +43129,18 @@
 
 		},
 
+		_slerpAdditive: function ( buffer, dstOffset, srcOffset, t, stride ) {
+
+			var workOffset = this._workIndex * stride;
+
+			// Store result in intermediate buffer offset
+			Quaternion.multiplyQuaternionsFlat( buffer, workOffset, buffer, dstOffset, buffer, srcOffset );
+
+			// Slerp to the intermediate result
+			Quaternion.slerpFlat( buffer, dstOffset, buffer, dstOffset, buffer, workOffset, t );
+
+		},
+
 		_lerp: function ( buffer, dstOffset, srcOffset, t, stride ) {
 
 			var s = 1 - t;
@@ -42769,6 +43150,18 @@
 				var j = dstOffset + i;
 
 				buffer[ j ] = buffer[ j ] * s + buffer[ srcOffset + i ] * t;
+
+			}
+
+		},
+
+		_lerpAdditive: function ( buffer, dstOffset, srcOffset, t, stride ) {
+
+			for ( var i = 0; i !== stride; ++ i ) {
+
+				var j = dstOffset + i;
+
+				buffer[ j ] = buffer[ j ] + buffer[ srcOffset + i ] * t;
 
 			}
 
@@ -43876,11 +44269,12 @@
 	 *
 	 */
 
-	function AnimationAction( mixer, clip, localRoot ) {
+	function AnimationAction( mixer, clip, localRoot, blendMode ) {
 
 		this._mixer = mixer;
 		this._clip = clip;
 		this._localRoot = localRoot || null;
+		this.blendMode = blendMode || clip.blendMode;
 
 		var tracks = clip.tracks,
 			nTracks = tracks.length,
@@ -44239,10 +44633,28 @@
 				var interpolants = this._interpolants;
 				var propertyMixers = this._propertyBindings;
 
-				for ( var j = 0, m = interpolants.length; j !== m; ++ j ) {
+				switch ( this.blendMode ) {
 
-					interpolants[ j ].evaluate( clipTime );
-					propertyMixers[ j ].accumulate( accuIndex, weight );
+					case AdditiveAnimationBlendMode:
+
+						for ( var j = 0, m = interpolants.length; j !== m; ++ j ) {
+
+							interpolants[ j ].evaluate( clipTime );
+							propertyMixers[ j ].accumulateAdditive( weight );
+
+						}
+
+						break;
+
+					case NormalAnimationBlendMode:
+					default:
+
+						for ( var j = 0, m = interpolants.length; j !== m; ++ j ) {
+
+							interpolants[ j ].evaluate( clipTime );
+							propertyMixers[ j ].accumulate( accuIndex, weight );
+
+						}
 
 				}
 
@@ -45060,7 +45472,7 @@
 		// return an action for a clip optionally using a custom root target
 		// object (this method allocates a lot of dynamic memory in case a
 		// previously unknown clip/root combination is specified)
-		clipAction: function ( clip, optionalRoot ) {
+		clipAction: function ( clip, optionalRoot, blendMode ) {
 
 			var root = optionalRoot || this._root,
 				rootUuid = root.uuid,
@@ -45073,12 +45485,26 @@
 				actionsForClip = this._actionsByClip[ clipUuid ],
 				prototypeAction = null;
 
+			if ( blendMode === undefined ) {
+
+				if ( clipObject !== null ) {
+
+					blendMode = clipObject.blendMode;
+
+				} else {
+
+					blendMode = NormalAnimationBlendMode;
+
+				}
+
+			}
+
 			if ( actionsForClip !== undefined ) {
 
 				var existingAction =
 						actionsForClip.actionByRoot[ rootUuid ];
 
-				if ( existingAction !== undefined ) {
+				if ( existingAction !== undefined && existingAction.blendMode === blendMode ) {
 
 					return existingAction;
 
@@ -45098,7 +45524,7 @@
 			if ( clipObject === null ) { return null; }
 
 			// allocate all resources required to run it
-			var newAction = new AnimationAction( this, clipObject, optionalRoot );
+			var newAction = new AnimationAction( this, clipObject, optionalRoot, blendMode );
 
 			this._bindAction( newAction, prototypeAction );
 
@@ -46194,6 +46620,8 @@
 
 		LineSegments.call( this, geometry, material );
 
+		this.type = 'SkeletonHelper';
+
 		this.root = object;
 		this.bones = bones;
 
@@ -46258,6 +46686,8 @@
 		var material = new MeshBasicMaterial( { wireframe: true, fog: false, toneMapped: false } );
 
 		Mesh.call( this, geometry, material );
+
+		this.type = 'PointLightHelper';
 
 		this.matrix = this.light.matrixWorld;
 		this.matrixAutoUpdate = false;
@@ -46447,6 +46877,8 @@
 
 		LineSegments.call( this, geometry, material );
 
+		this.type = 'GridHelper';
+
 	}
 
 	GridHelper.prototype = Object.assign( Object.create( LineSegments.prototype ), {
@@ -46553,6 +46985,8 @@
 		var material = new LineBasicMaterial( { vertexColors: true, toneMapped: false } );
 
 		LineSegments.call( this, geometry, material );
+
+		this.type = 'PolarGridHelper';
 
 	}
 
@@ -46749,6 +47183,8 @@
 
 		LineSegments.call( this, geometry, material );
 
+		this.type = 'CameraHelper';
+
 		this.camera = camera;
 		if ( this.camera.updateProjectionMatrix ) { this.camera.updateProjectionMatrix(); }
 
@@ -46858,6 +47294,8 @@
 		geometry.setAttribute( 'position', new BufferAttribute( positions, 3 ) );
 
 		LineSegments.call( this, geometry, new LineBasicMaterial( { color: color, toneMapped: false } ) );
+
+		this.type = 'BoxHelper';
 
 		this.matrixAutoUpdate = false;
 
@@ -46971,6 +47409,8 @@
 
 		LineSegments.call( this, geometry, new LineBasicMaterial( { color: color, toneMapped: false } ) );
 
+		this.type = 'Box3Helper';
+
 		this.geometry.computeBoundingSphere();
 
 	}
@@ -47000,8 +47440,6 @@
 
 	function PlaneHelper( plane, size, hex ) {
 
-		this.type = 'PlaneHelper';
-
 		this.plane = plane;
 
 		this.size = ( size === undefined ) ? 1 : size;
@@ -47015,6 +47453,8 @@
 		geometry.computeBoundingSphere();
 
 		Line.call( this, geometry, new LineBasicMaterial( { color: color, toneMapped: false } ) );
+
+		this.type = 'PlaneHelper';
 
 		//
 
@@ -47071,6 +47511,8 @@
 		// dir is assumed to be normalized
 
 		Object3D.call( this );
+
+		this.type = 'ArrowHelper';
 
 		if ( dir === undefined ) { dir = new Vector3( 0, 0, 1 ); }
 		if ( origin === undefined ) { origin = new Vector3( 0, 0, 0 ); }
@@ -47198,6 +47640,8 @@
 
 		LineSegments.call( this, geometry, material );
 
+		this.type = 'AxesHelper';
+
 	}
 
 	AxesHelper.prototype = Object.create( LineSegments.prototype );
@@ -47220,15 +47664,19 @@
 	var LOD_MIN = 4;
 	var LOD_MAX = 8;
 	var SIZE_MAX = Math.pow( 2, LOD_MAX );
+
 	// The standard deviations (radians) associated with the extra mips. These are
 	// chosen to approximate a Trowbridge-Reitz distribution function times the
 	// geometric shadowing function. These sigma values squared must match the
 	// variance #defines in cube_uv_reflection_fragment.glsl.js.
 	var EXTRA_LOD_SIGMA = [ 0.125, 0.215, 0.35, 0.446, 0.526, 0.582 ];
+
 	var TOTAL_LODS = LOD_MAX - LOD_MIN + 1 + EXTRA_LOD_SIGMA.length;
+
 	// The maximum length of the blur for loop. Smaller sigmas will use fewer
 	// samples and exit early, but not recompile the shader.
 	var MAX_SAMPLES = 20;
+
 	var ENCODINGS = {};
 	ENCODINGS[ LinearEncoding ] = 0;
 	ENCODINGS[ sRGBEncoding ] = 1;
@@ -47239,22 +47687,16 @@
 	ENCODINGS[ GammaEncoding ] = 6;
 
 	var _flatCamera = new OrthographicCamera();
-	var _blurMaterial = _getBlurShader( MAX_SAMPLES );
-	var _equirectShader = null;
-	var _cubemapShader = null;
-
 	var ref = _createPlanes();
 	var _lodPlanes = ref._lodPlanes;
 	var _sizeLods = ref._sizeLods;
 	var _sigmas = ref._sigmas;
-	var _pingPongRenderTarget = null;
-	var _renderer = null;
-
 	var _oldTarget = null;
 
 	// Golden Ratio
 	var PHI = ( 1 + Math.sqrt( 5 ) ) / 2;
 	var INV_PHI = 1 / PHI;
+
 	// Vertices of a dodecahedron (except the opposites, which represent the
 	// same axis), used as axis directions evenly spread on a sphere.
 	var _axisDirections = [
@@ -47271,8 +47713,14 @@
 
 	function PMREMGenerator( renderer ) {
 
-		_renderer = renderer;
-		_compileMaterial( _blurMaterial );
+		this._renderer = renderer;
+		this._pingPongRenderTarget = null;
+
+		this._blurMaterial = _getBlurShader( MAX_SAMPLES );
+		this._equirectShader = null;
+		this._cubemapShader = null;
+
+		this._compileMaterial( this._blurMaterial );
 
 	}
 
@@ -47293,16 +47741,18 @@
 			if ( far === void 0 ) far = 100;
 
 
-			_oldTarget = _renderer.getRenderTarget();
-			var cubeUVRenderTarget = _allocateTargets();
-			_sceneToCubeUV( scene, near, far, cubeUVRenderTarget );
+			_oldTarget = this._renderer.getRenderTarget();
+			var cubeUVRenderTarget = this._allocateTargets();
+
+			this._sceneToCubeUV( scene, near, far, cubeUVRenderTarget );
 			if ( sigma > 0 ) {
 
-				_blur( cubeUVRenderTarget, 0, 0, sigma );
+				this._blur( cubeUVRenderTarget, 0, 0, sigma );
 
 			}
-			_applyPMREM( cubeUVRenderTarget );
-			_cleanup( cubeUVRenderTarget );
+
+			this._applyPMREM( cubeUVRenderTarget );
+			this._cleanup( cubeUVRenderTarget );
 
 			return cubeUVRenderTarget;
 
@@ -47330,11 +47780,11 @@
 		 */
 		fromCubemap: function ( cubemap ) {
 
-			_oldTarget = _renderer.getRenderTarget();
-			var cubeUVRenderTarget = _allocateTargets( cubemap );
-			_textureToCubeUV( cubemap, cubeUVRenderTarget );
-			_applyPMREM( cubeUVRenderTarget );
-			_cleanup( cubeUVRenderTarget );
+			_oldTarget = this._renderer.getRenderTarget();
+			var cubeUVRenderTarget = this._allocateTargets( cubemap );
+			this._textureToCubeUV( cubemap, cubeUVRenderTarget );
+			this._applyPMREM( cubeUVRenderTarget );
+			this._cleanup( cubeUVRenderTarget );
 
 			return cubeUVRenderTarget;
 
@@ -47346,10 +47796,10 @@
 		 */
 		compileCubemapShader: function () {
 
-			if ( _cubemapShader == null ) {
+			if ( this._cubemapShader === null ) {
 
-				_cubemapShader = _getCubemapShader();
-				_compileMaterial( _cubemapShader );
+				this._cubemapShader = _getCubemapShader();
+				this._compileMaterial( this._cubemapShader );
 
 			}
 
@@ -47361,10 +47811,10 @@
 		 */
 		compileEquirectangularShader: function () {
 
-			if ( _equirectShader == null ) {
+			if ( this._equirectShader === null ) {
 
-				_equirectShader = _getEquirectShader();
-				_compileMaterial( _equirectShader );
+				this._equirectShader = _getEquirectShader();
+				this._compileMaterial( this._equirectShader );
 
 			}
 
@@ -47377,10 +47827,10 @@
 		 */
 		dispose: function () {
 
-			_blurMaterial.dispose();
+			this._blurMaterial.dispose();
 
-			if ( _cubemapShader != null ) { _cubemapShader.dispose(); }
-			if ( _equirectShader != null ) { _equirectShader.dispose(); }
+			if ( this._cubemapShader !== null ) { this._cubemapShader.dispose(); }
+			if ( this._equirectShader !== null ) { this._equirectShader.dispose(); }
 
 			for ( var i = 0; i < _lodPlanes.length; i ++ ) {
 
@@ -47389,6 +47839,295 @@
 			}
 
 		},
+
+		// private interface
+
+		_cleanup: function ( outputTarget ) {
+
+			this._pingPongRenderTarget.dispose();
+			this._renderer.setRenderTarget( _oldTarget );
+			outputTarget.scissorTest = false;
+			// reset viewport and scissor
+			outputTarget.setSize( outputTarget.width, outputTarget.height );
+
+		},
+
+		_allocateTargets: function ( equirectangular ) {
+
+			var params = {
+				magFilter: NearestFilter,
+				minFilter: NearestFilter,
+				generateMipmaps: false,
+				type: equirectangular ? equirectangular.type : UnsignedByteType,
+				format: equirectangular ? equirectangular.format : RGBEFormat,
+				encoding: equirectangular ? equirectangular.encoding : RGBEEncoding,
+				depthBuffer: false,
+				stencilBuffer: false
+			};
+
+			var cubeUVRenderTarget = _createRenderTarget( params );
+			cubeUVRenderTarget.depthBuffer = equirectangular ? false : true;
+			this._pingPongRenderTarget = _createRenderTarget( params );
+			return cubeUVRenderTarget;
+
+		},
+
+		_compileMaterial: function ( material ) {
+
+			var tmpScene = new Scene();
+			tmpScene.add( new Mesh( _lodPlanes[ 0 ], material ) );
+			this._renderer.compile( tmpScene, _flatCamera );
+
+		},
+
+		_sceneToCubeUV: function ( scene, near, far, cubeUVRenderTarget ) {
+
+			var fov = 90;
+			var aspect = 1;
+			var cubeCamera = new PerspectiveCamera( fov, aspect, near, far );
+			var upSign = [ 1, 1, 1, 1, - 1, 1 ];
+			var forwardSign = [ 1, 1, - 1, - 1, - 1, 1 ];
+			var renderer = this._renderer;
+
+			var outputEncoding = renderer.outputEncoding;
+			var toneMapping = renderer.toneMapping;
+			var toneMappingExposure = renderer.toneMappingExposure;
+			var clearColor = renderer.getClearColor();
+			var clearAlpha = renderer.getClearAlpha();
+
+			renderer.toneMapping = LinearToneMapping;
+			renderer.toneMappingExposure = 1.0;
+			renderer.outputEncoding = LinearEncoding;
+			scene.scale.z *= - 1;
+
+			var background = scene.background;
+			if ( background && background.isColor ) {
+
+				background.convertSRGBToLinear();
+				// Convert linear to RGBE
+				var maxComponent = Math.max( background.r, background.g, background.b );
+				var fExp = Math.min( Math.max( Math.ceil( Math.log2( maxComponent ) ), - 128.0 ), 127.0 );
+				background = background.multiplyScalar( Math.pow( 2.0, - fExp ) );
+				var alpha = ( fExp + 128.0 ) / 255.0;
+				renderer.setClearColor( background, alpha );
+				scene.background = null;
+
+			}
+
+			for ( var i = 0; i < 6; i ++ ) {
+
+				var col = i % 3;
+				if ( col == 0 ) {
+
+					cubeCamera.up.set( 0, upSign[ i ], 0 );
+					cubeCamera.lookAt( forwardSign[ i ], 0, 0 );
+
+				} else if ( col == 1 ) {
+
+					cubeCamera.up.set( 0, 0, upSign[ i ] );
+					cubeCamera.lookAt( 0, forwardSign[ i ], 0 );
+
+				} else {
+
+					cubeCamera.up.set( 0, upSign[ i ], 0 );
+					cubeCamera.lookAt( 0, 0, forwardSign[ i ] );
+
+				}
+
+				_setViewport( cubeUVRenderTarget,
+					col * SIZE_MAX, i > 2 ? SIZE_MAX : 0, SIZE_MAX, SIZE_MAX );
+				renderer.setRenderTarget( cubeUVRenderTarget );
+				renderer.render( scene, cubeCamera );
+
+			}
+
+			renderer.toneMapping = toneMapping;
+			renderer.toneMappingExposure = toneMappingExposure;
+			renderer.outputEncoding = outputEncoding;
+			renderer.setClearColor( clearColor, clearAlpha );
+			scene.scale.z *= - 1;
+
+		},
+
+		_textureToCubeUV: function ( texture, cubeUVRenderTarget ) {
+
+			var scene = new Scene();
+			var renderer = this._renderer;
+
+			if ( texture.isCubeTexture ) {
+
+				if ( this._cubemapShader == null ) {
+
+					this._cubemapShader = _getCubemapShader();
+
+				}
+
+			} else {
+
+				if ( this._equirectShader == null ) {
+
+					this._equirectShader = _getEquirectShader();
+
+				}
+
+			}
+
+			var material = texture.isCubeTexture ? this._cubemapShader : this._equirectShader;
+			scene.add( new Mesh( _lodPlanes[ 0 ], material ) );
+
+			var uniforms = material.uniforms;
+
+			uniforms[ 'envMap' ].value = texture;
+
+			if ( ! texture.isCubeTexture ) {
+
+				uniforms[ 'texelSize' ].value.set( 1.0 / texture.image.width, 1.0 / texture.image.height );
+
+			}
+
+			uniforms[ 'inputEncoding' ].value = ENCODINGS[ texture.encoding ];
+			uniforms[ 'outputEncoding' ].value = ENCODINGS[ texture.encoding ];
+
+			_setViewport( cubeUVRenderTarget, 0, 0, 3 * SIZE_MAX, 2 * SIZE_MAX );
+
+			renderer.setRenderTarget( cubeUVRenderTarget );
+			renderer.render( scene, _flatCamera );
+
+		},
+
+		_applyPMREM: function ( cubeUVRenderTarget ) {
+
+			var renderer = this._renderer;
+			var autoClear = renderer.autoClear;
+			renderer.autoClear = false;
+
+			for ( var i = 1; i < TOTAL_LODS; i ++ ) {
+
+				var sigma = Math.sqrt( _sigmas[ i ] * _sigmas[ i ] - _sigmas[ i - 1 ] * _sigmas[ i - 1 ] );
+
+				var poleAxis = _axisDirections[ ( i - 1 ) % _axisDirections.length ];
+
+				this._blur( cubeUVRenderTarget, i - 1, i, sigma, poleAxis );
+
+			}
+
+			renderer.autoClear = autoClear;
+
+		},
+
+		/**
+		 * This is a two-pass Gaussian blur for a cubemap. Normally this is done
+		 * vertically and horizontally, but this breaks down on a cube. Here we apply
+		 * the blur latitudinally (around the poles), and then longitudinally (towards
+		 * the poles) to approximate the orthogonally-separable blur. It is least
+		 * accurate at the poles, but still does a decent job.
+		 */
+		_blur: function ( cubeUVRenderTarget, lodIn, lodOut, sigma, poleAxis ) {
+
+			var pingPongRenderTarget = this._pingPongRenderTarget;
+
+			this._halfBlur(
+				cubeUVRenderTarget,
+				pingPongRenderTarget,
+				lodIn,
+				lodOut,
+				sigma,
+				'latitudinal',
+				poleAxis );
+
+			this._halfBlur(
+				pingPongRenderTarget,
+				cubeUVRenderTarget,
+				lodOut,
+				lodOut,
+				sigma,
+				'longitudinal',
+				poleAxis );
+
+		},
+
+		_halfBlur: function ( targetIn, targetOut, lodIn, lodOut, sigmaRadians, direction, poleAxis ) {
+
+			var renderer = this._renderer;
+			var blurMaterial = this._blurMaterial;
+
+			if ( direction !== 'latitudinal' && direction !== 'longitudinal' ) {
+
+				console.error(
+					'blur direction must be either latitudinal or longitudinal!' );
+
+			}
+
+			// Number of standard deviations at which to cut off the discrete approximation.
+			var STANDARD_DEVIATIONS = 3;
+
+			var blurScene = new Scene();
+			blurScene.add( new Mesh( _lodPlanes[ lodOut ], blurMaterial ) );
+			var blurUniforms = blurMaterial.uniforms;
+
+			var pixels = _sizeLods[ lodIn ] - 1;
+			var radiansPerPixel = isFinite( sigmaRadians ) ? Math.PI / ( 2 * pixels ) : 2 * Math.PI / ( 2 * MAX_SAMPLES - 1 );
+			var sigmaPixels = sigmaRadians / radiansPerPixel;
+			var samples = isFinite( sigmaRadians ) ? 1 + Math.floor( STANDARD_DEVIATIONS * sigmaPixels ) : MAX_SAMPLES;
+
+			if ( samples > MAX_SAMPLES ) {
+
+				console.warn( ("sigmaRadians, " + sigmaRadians + ", is too large and will clip, as it requested " + samples + " samples when the maximum is set to " + MAX_SAMPLES) );
+
+			}
+
+			var weights = [];
+			var sum = 0;
+
+			for ( var i = 0; i < MAX_SAMPLES; ++ i ) {
+
+				var x = i / sigmaPixels;
+				var weight = Math.exp( - x * x / 2 );
+				weights.push( weight );
+
+				if ( i == 0 ) {
+
+					sum += weight;
+
+				} else if ( i < samples ) {
+
+					sum += 2 * weight;
+
+				}
+
+			}
+
+			for ( var i = 0; i < weights.length; i ++ ) {
+
+				weights[ i ] = weights[ i ] / sum;
+
+			}
+
+			blurUniforms[ 'envMap' ].value = targetIn.texture;
+			blurUniforms[ 'samples' ].value = samples;
+			blurUniforms[ 'weights' ].value = weights;
+			blurUniforms[ 'latitudinal' ].value = direction === 'latitudinal';
+
+			if ( poleAxis ) {
+
+				blurUniforms[ 'poleAxis' ].value = poleAxis;
+
+			}
+
+			blurUniforms[ 'dTheta' ].value = radiansPerPixel;
+			blurUniforms[ 'mipInt' ].value = LOD_MAX - lodIn;
+			blurUniforms[ 'inputEncoding' ].value = ENCODINGS[ targetIn.texture.encoding ];
+			blurUniforms[ 'outputEncoding' ].value = ENCODINGS[ targetIn.texture.encoding ];
+
+			var outputSize = _sizeLods[ lodOut ];
+			var x = 3 * Math.max( 0, SIZE_MAX - 2 * outputSize );
+			var y = ( lodOut === 0 ? 0 : 2 * SIZE_MAX ) + 2 * outputSize * ( lodOut > LOD_MAX - LOD_MIN ? lodOut - LOD_MAX + LOD_MIN : 0 );
+
+			_setViewport( targetOut, x, y, 3 * outputSize, 2 * outputSize );
+			renderer.setRenderTarget( targetOut );
+			renderer.render( blurScene, _flatCamera );
+
+		}
 
 	};
 
@@ -47399,11 +48138,13 @@
 		var _sigmas = [];
 
 		var lod = LOD_MAX;
+
 		for ( var i = 0; i < TOTAL_LODS; i ++ ) {
 
 			var sizeLod = Math.pow( 2, lod );
 			_sizeLods.push( sizeLod );
 			var sigma = 1.0 / sizeLod;
+
 			if ( i > LOD_MAX - LOD_MIN ) {
 
 				sigma = EXTRA_LOD_SIGMA[ i - LOD_MAX + LOD_MIN - 1 ];
@@ -47413,6 +48154,7 @@
 				sigma = 0;
 
 			}
+
 			_sigmas.push( sigma );
 
 			var texelSize = 1.0 / ( sizeLod - 1 );
@@ -47448,6 +48190,7 @@
 				faceIndex.set( fill, faceIndexSize * vertices * face );
 
 			}
+
 			var planes = new BufferGeometry();
 			planes.setAttribute( 'position', new BufferAttribute( position, positionSize ) );
 			planes.setAttribute( 'uv', new BufferAttribute( uv, uvSize ) );
@@ -47461,150 +48204,8 @@
 			}
 
 		}
+
 		return { _lodPlanes: _lodPlanes, _sizeLods: _sizeLods, _sigmas: _sigmas };
-
-	}
-
-	function _allocateTargets( equirectangular ) {
-
-		var params = {
-			magFilter: NearestFilter,
-			minFilter: NearestFilter,
-			generateMipmaps: false,
-			type: equirectangular ? equirectangular.type : UnsignedByteType,
-			format: equirectangular ? equirectangular.format : RGBEFormat,
-			encoding: equirectangular ? equirectangular.encoding : RGBEEncoding,
-			depthBuffer: false,
-			stencilBuffer: false
-		};
-		var cubeUVRenderTarget = _createRenderTarget( params );
-		cubeUVRenderTarget.depthBuffer = equirectangular ? false : true;
-		_pingPongRenderTarget = _createRenderTarget( params );
-		return cubeUVRenderTarget;
-
-	}
-
-	function _cleanup( outputTarget ) {
-
-		_pingPongRenderTarget.dispose();
-		_renderer.setRenderTarget( _oldTarget );
-		outputTarget.scissorTest = false;
-		// reset viewport and scissor
-		outputTarget.setSize( outputTarget.width, outputTarget.height );
-
-	}
-
-	function _sceneToCubeUV( scene, near, far, cubeUVRenderTarget ) {
-
-		var fov = 90;
-		var aspect = 1;
-		var cubeCamera = new PerspectiveCamera( fov, aspect, near, far );
-		var upSign = [ 1, 1, 1, 1, - 1, 1 ];
-		var forwardSign = [ 1, 1, - 1, - 1, - 1, 1 ];
-
-		var outputEncoding = _renderer.outputEncoding;
-		var toneMapping = _renderer.toneMapping;
-		var toneMappingExposure = _renderer.toneMappingExposure;
-		var clearColor = _renderer.getClearColor();
-		var clearAlpha = _renderer.getClearAlpha();
-
-		_renderer.toneMapping = LinearToneMapping;
-		_renderer.toneMappingExposure = 1.0;
-		_renderer.outputEncoding = LinearEncoding;
-		scene.scale.z *= - 1;
-
-		var background = scene.background;
-		if ( background && background.isColor ) {
-
-			background.convertSRGBToLinear();
-			// Convert linear to RGBE
-			var maxComponent = Math.max( background.r, background.g, background.b );
-			var fExp = Math.min( Math.max( Math.ceil( Math.log2( maxComponent ) ), - 128.0 ), 127.0 );
-			background = background.multiplyScalar( Math.pow( 2.0, - fExp ) );
-			var alpha = ( fExp + 128.0 ) / 255.0;
-			_renderer.setClearColor( background, alpha );
-			scene.background = null;
-
-		}
-
-		for ( var i = 0; i < 6; i ++ ) {
-
-			var col = i % 3;
-			if ( col == 0 ) {
-
-				cubeCamera.up.set( 0, upSign[ i ], 0 );
-				cubeCamera.lookAt( forwardSign[ i ], 0, 0 );
-
-			} else if ( col == 1 ) {
-
-				cubeCamera.up.set( 0, 0, upSign[ i ] );
-				cubeCamera.lookAt( 0, forwardSign[ i ], 0 );
-
-			} else {
-
-				cubeCamera.up.set( 0, upSign[ i ], 0 );
-				cubeCamera.lookAt( 0, 0, forwardSign[ i ] );
-
-			}
-			_setViewport( cubeUVRenderTarget,
-				col * SIZE_MAX, i > 2 ? SIZE_MAX : 0, SIZE_MAX, SIZE_MAX );
-			_renderer.setRenderTarget( cubeUVRenderTarget );
-			_renderer.render( scene, cubeCamera );
-
-		}
-
-		_renderer.toneMapping = toneMapping;
-		_renderer.toneMappingExposure = toneMappingExposure;
-		_renderer.outputEncoding = outputEncoding;
-		_renderer.setClearColor( clearColor, clearAlpha );
-		scene.scale.z *= - 1;
-
-	}
-
-	function _textureToCubeUV( texture, cubeUVRenderTarget ) {
-
-		var scene = new Scene();
-		if ( texture.isCubeTexture ) {
-
-			if ( _cubemapShader == null ) {
-
-				_cubemapShader = _getCubemapShader();
-
-			}
-
-		} else {
-
-			if ( _equirectShader == null ) {
-
-				_equirectShader = _getEquirectShader();
-
-			}
-
-		}
-		var material = texture.isCubeTexture ? _cubemapShader : _equirectShader;
-		scene.add( new Mesh( _lodPlanes[ 0 ], material ) );
-		var uniforms = material.uniforms;
-
-		uniforms[ 'envMap' ].value = texture;
-		if ( ! texture.isCubeTexture ) {
-
-			uniforms[ 'texelSize' ].value.set( 1.0 / texture.image.width, 1.0 / texture.image.height );
-
-		}
-		uniforms[ 'inputEncoding' ].value = ENCODINGS[ texture.encoding ];
-		uniforms[ 'outputEncoding' ].value = ENCODINGS[ texture.encoding ];
-
-		_setViewport( cubeUVRenderTarget, 0, 0, 3 * SIZE_MAX, 2 * SIZE_MAX );
-		_renderer.setRenderTarget( cubeUVRenderTarget );
-		_renderer.render( scene, _flatCamera );
-
-	}
-
-	function _compileMaterial( material ) {
-
-		var tmpScene = new Scene();
-		tmpScene.add( new Mesh( _lodPlanes[ 0 ], material ) );
-		_renderer.compile( tmpScene, _flatCamera );
 
 	}
 
@@ -47622,135 +48223,6 @@
 
 		target.viewport.set( x, y, width, height );
 		target.scissor.set( x, y, width, height );
-
-	}
-
-	function _applyPMREM( cubeUVRenderTarget ) {
-
-		var autoClear = _renderer.autoClear;
-		_renderer.autoClear = false;
-
-		for ( var i = 1; i < TOTAL_LODS; i ++ ) {
-
-			var sigma = Math.sqrt(
-				_sigmas[ i ] * _sigmas[ i ] -
-			_sigmas[ i - 1 ] * _sigmas[ i - 1 ] );
-			var poleAxis =
-			_axisDirections[ ( i - 1 ) % _axisDirections.length ];
-			_blur( cubeUVRenderTarget, i - 1, i, sigma, poleAxis );
-
-		}
-
-		_renderer.autoClear = autoClear;
-
-	}
-
-	/**
-	 * This is a two-pass Gaussian blur for a cubemap. Normally this is done
-	 * vertically and horizontally, but this breaks down on a cube. Here we apply
-	 * the blur latitudinally (around the poles), and then longitudinally (towards
-	 * the poles) to approximate the orthogonally-separable blur. It is least
-	 * accurate at the poles, but still does a decent job.
-	 */
-	function _blur( cubeUVRenderTarget, lodIn, lodOut, sigma, poleAxis ) {
-
-		_halfBlur(
-			cubeUVRenderTarget,
-			_pingPongRenderTarget,
-			lodIn,
-			lodOut,
-			sigma,
-			'latitudinal',
-			poleAxis );
-
-		_halfBlur(
-			_pingPongRenderTarget,
-			cubeUVRenderTarget,
-			lodOut,
-			lodOut,
-			sigma,
-			'longitudinal',
-			poleAxis );
-
-	}
-
-	function _halfBlur( targetIn, targetOut, lodIn, lodOut, sigmaRadians, direction, poleAxis ) {
-
-		if ( direction !== 'latitudinal' && direction !== 'longitudinal' ) {
-
-			console.error(
-				'blur direction must be either latitudinal or longitudinal!' );
-
-		}
-
-		// Number of standard deviations at which to cut off the discrete approximation.
-		var STANDARD_DEVIATIONS = 3;
-
-		var blurScene = new Scene();
-		blurScene.add( new Mesh( _lodPlanes[ lodOut ], _blurMaterial ) );
-		var blurUniforms = _blurMaterial.uniforms;
-
-		var pixels = _sizeLods[ lodIn ] - 1;
-		var radiansPerPixel = isFinite( sigmaRadians ) ? Math.PI / ( 2 * pixels ) : 2 * Math.PI / ( 2 * MAX_SAMPLES - 1 );
-		var sigmaPixels = sigmaRadians / radiansPerPixel;
-		var samples = isFinite( sigmaRadians ) ? 1 + Math.floor( STANDARD_DEVIATIONS * sigmaPixels ) : MAX_SAMPLES;
-
-		if ( samples > MAX_SAMPLES ) {
-
-			console.warn( ("sigmaRadians, " + sigmaRadians + ", is too large and will clip, as it requested " + samples + " samples when the maximum is set to " + MAX_SAMPLES) );
-
-		}
-
-		var weights = [];
-		var sum = 0;
-
-		for ( var i = 0; i < MAX_SAMPLES; ++ i ) {
-
-			var x = i / sigmaPixels;
-			var weight = Math.exp( - x * x / 2 );
-			weights.push( weight );
-
-			if ( i == 0 ) {
-
-				sum += weight;
-
-			} else if ( i < samples ) {
-
-				sum += 2 * weight;
-
-			}
-
-		}
-
-		for ( var i = 0; i < weights.length; i ++ ) {
-
-			weights[ i ] = weights[ i ] / sum;
-
-		}
-
-		blurUniforms[ 'envMap' ].value = targetIn.texture;
-		blurUniforms[ 'samples' ].value = samples;
-		blurUniforms[ 'weights' ].value = weights;
-		blurUniforms[ 'latitudinal' ].value = direction === 'latitudinal';
-		if ( poleAxis ) {
-
-			blurUniforms[ 'poleAxis' ].value = poleAxis;
-
-		}
-		blurUniforms[ 'dTheta' ].value = radiansPerPixel;
-		blurUniforms[ 'mipInt' ].value = LOD_MAX - lodIn;
-		blurUniforms[ 'inputEncoding' ].value = ENCODINGS[ targetIn.texture.encoding ];
-		blurUniforms[ 'outputEncoding' ].value = ENCODINGS[ targetIn.texture.encoding ];
-
-		var outputSize = _sizeLods[ lodOut ];
-		var x = 3 * Math.max( 0, SIZE_MAX - 2 * outputSize );
-		var y = ( lodOut === 0 ? 0 : 2 * SIZE_MAX ) +
-		2 * outputSize *
-			( lodOut > LOD_MAX - LOD_MIN ? lodOut - LOD_MAX + LOD_MIN : 0 );
-
-		_setViewport( targetOut, x, y, 3 * outputSize, 2 * outputSize );
-		_renderer.setRenderTarget( targetOut );
-		_renderer.render( blurScene, _flatCamera );
 
 	}
 
@@ -48307,6 +48779,17 @@
 			return this.getSize( optionalTarget );
 
 		}
+	} );
+
+	Object.assign( Sphere.prototype, {
+
+		empty: function () {
+
+			console.warn( 'THREE.Sphere: .empty() has been renamed to .isEmpty().' );
+			return this.isEmpty();
+
+		},
+
 	} );
 
 	Frustum.prototype.setFromMatrix = function ( m ) {
@@ -49945,6 +50428,7 @@
 	exports.ACESFilmicToneMapping = ACESFilmicToneMapping;
 	exports.AddEquation = AddEquation;
 	exports.AddOperation = AddOperation;
+	exports.AdditiveAnimationBlendMode = AdditiveAnimationBlendMode;
 	exports.AdditiveBlending = AdditiveBlending;
 	exports.AlphaFormat = AlphaFormat;
 	exports.AlwaysDepth = AlwaysDepth;
@@ -50191,6 +50675,7 @@
 	exports.NoBlending = NoBlending;
 	exports.NoColors = NoColors;
 	exports.NoToneMapping = NoToneMapping;
+	exports.NormalAnimationBlendMode = NormalAnimationBlendMode;
 	exports.NormalBlending = NormalBlending;
 	exports.NotEqualDepth = NotEqualDepth;
 	exports.NotEqualStencilFunc = NotEqualStencilFunc;
