@@ -1,71 +1,68 @@
-/**
- * @author dforrer / https://github.com/dforrer
- * Developed as part of a project at University of Applied Sciences and Arts Northwestern Switzerland (www.fhnw.ch)
- */
-
 import { Command } from '../Command.js';
-import * as THREE from '../../../build/three.module.js';
+import { ObjectLoader } from 'three';
 
-/**
- * @param editor Editor
- * @param object THREE.Object3D
- * @constructor
- */
-var AddObjectCommand = function ( editor, object ) {
+class AddObjectCommand extends Command {
 
-	Command.call( this, editor );
+	/**
+	 * @param {Editor} editor
+	 * @param {THREE.Object3D|null} [object=null]
+	 * @constructor
+	 */
+	constructor( editor, object = null ) {
 
-	this.type = 'AddObjectCommand';
+		super( editor );
 
-	this.object = object;
-	if ( object !== undefined ) {
+		this.type = 'AddObjectCommand';
 
-		this.name = 'Add Object: ' + object.name;
+		this.object = object;
+
+		if ( object !== null ) {
+
+			this.name = editor.strings.getKey( 'command/AddObject' ) + ': ' + object.name;
+
+		}
 
 	}
 
-};
-
-AddObjectCommand.prototype = {
-
-	execute: function () {
+	execute() {
 
 		this.editor.addObject( this.object );
 		this.editor.select( this.object );
 
-	},
+	}
 
-	undo: function () {
+	undo() {
 
 		this.editor.removeObject( this.object );
 		this.editor.deselect();
 
-	},
+	}
 
-	toJSON: function () {
+	toJSON() {
 
-		var output = Command.prototype.toJSON.call( this );
+		const output = super.toJSON( this );
+
 		output.object = this.object.toJSON();
 
 		return output;
 
-	},
+	}
 
-	fromJSON: function ( json ) {
+	fromJSON( json ) {
 
-		Command.prototype.fromJSON.call( this, json );
+		super.fromJSON( json );
 
 		this.object = this.editor.objectByUuid( json.object.object.uuid );
 
 		if ( this.object === undefined ) {
 
-			var loader = new THREE.ObjectLoader();
+			const loader = new ObjectLoader();
 			this.object = loader.parse( json.object );
 
 		}
 
 	}
 
-};
+}
 
 export { AddObjectCommand };

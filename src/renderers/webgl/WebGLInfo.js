@@ -1,15 +1,13 @@
-/**
- * @author Mugen87 / https://github.com/Mugen87
- */
+import { error } from '../../utils.js';
 
 function WebGLInfo( gl ) {
 
-	var memory = {
+	const memory = {
 		geometries: 0,
 		textures: 0
 	};
 
-	var render = {
+	const render = {
 		frame: 0,
 		calls: 0,
 		triangles: 0,
@@ -18,8 +16,6 @@ function WebGLInfo( gl ) {
 	};
 
 	function update( count, mode, instanceCount ) {
-
-		instanceCount = instanceCount || 1;
 
 		render.calls ++;
 
@@ -46,7 +42,7 @@ function WebGLInfo( gl ) {
 				break;
 
 			default:
-				console.error( 'THREE.WebGLInfo: Unknown draw mode:', mode );
+				error( 'WebGLInfo: Unknown draw mode:', mode );
 				break;
 
 		}
@@ -55,7 +51,6 @@ function WebGLInfo( gl ) {
 
 	function reset() {
 
-		render.frame ++;
 		render.calls = 0;
 		render.triangles = 0;
 		render.points = 0;

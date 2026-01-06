@@ -4,23 +4,18 @@
 		<meta charset="utf-8">
 		<title>three.js examples</title>
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-		<link rel="shortcut icon" href="../files/favicon.ico" />
+		<link rel="shortcut icon" href="../files/favicon_white.ico" media="(prefers-color-scheme: dark)"/>
+		<link rel="shortcut icon" href="../files/favicon.ico" media="(prefers-color-scheme: light)" />
 		<link rel="stylesheet" type="text/css" href="../files/main.css">
-		<style>
-			#panel #content .link {
-				display: block;
-			}
-		</style>
 	</head>
 	<body>
 
 		<div id="panel">
 
-			<div id="header">
+			<div id="header" translate="no">
 				<h1><a href="https://threejs.org">three.js</a></h1>
 
 				<div id="sections">
-					<a href="../docs/index.html#manual/introduction/Creating-a-scene">docs</a>
 					<span class="selected">examples</span>
 				</div>
 
@@ -32,87 +27,205 @@
 			<div id="contentWrapper">
 
 				<div id="inputWrapper">
-					<input placeholder="" type="text" id="filter" autocorrect="off" autocapitalize="off" spellcheck="false" />
-					<div id="exitSearchButton"></div>
+					<input placeholder="" type="text" id="filterInput" autocorrect="off" autocapitalize="off" spellcheck="false" />
+					<div id="clearSearchButton"></div>
 				</div>
 
-				<div id="content"></div>
+				<div id="content">
+					<img id="previewsToggler" src="./files/thumbnails.svg" width="20" height="20" />
+				</div>
 			</div>
 
 		</div>
 
-		<iframe id="viewer" name="viewer" allowfullscreen allowvr onmousewheel=""></iframe>
+		<iframe id="viewer" name="viewer" allow="fullscreen; xr-spatial-tracking;"></iframe>
 
 		<a id="button" target="_blank"><img src="../files/ic_code_black_24dp.svg"></a>
 
-		<script src="files.js"></script>
-
 		<script>
 
-		function extractQuery() {
+		const panel = document.getElementById( 'panel' );
+		const content = document.getElementById( 'content' );
+		const viewer = document.getElementById( 'viewer' );
+		const filterInput = document.getElementById( 'filterInput' );
+		const clearSearchButton = document.getElementById( 'clearSearchButton' );
+		const expandButton = document.getElementById( 'expandButton' );
+		const viewSrcButton = document.getElementById( 'button' );
+		const panelScrim = document.getElementById( 'panelScrim' );
+		const previewsToggler = document.getElementById( 'previewsToggler' );
 
-			var p = window.location.search.indexOf( '?q=' );
+		const links = {};
+		const validRedirects = new Map();
+		const fragment = document.createDocumentFragment();
 
-			if ( p !== - 1 ) {
+		let selected = null;
 
-				return window.location.search.substr( 3 );
+		init();
+
+		async function init() {
+
+			viewSrcButton.style.display = 'none';
+
+			const files = await ( await fetch( 'files.json' ) ).json();
+			const tags = await ( await fetch( 'tags.json' ) ).json();
+
+			for ( const key in files ) {
+
+				const category = files[ key ];
+
+				const header = document.createElement( 'h2' );
+				header.textContent = key;
+				header.setAttribute( 'data-category', key );
+				fragment.appendChild( header );
+
+				for ( let i = 0; i < category.length; i ++ ) {
+
+					const file = category[ i ];
+
+					const link = createLink( file, tags[ file ] );
+					fragment.appendChild( link );
+
+					links[ file ] = link;
+					validRedirects.set( file, file + '.html' );
+
+				}
 
 			}
 
-			return '';
+			content.appendChild( fragment );
+
+			if ( window.location.hash !== '' ) {
+
+				const file = window.location.hash.substring( 1 );
+
+				// use a predefined map of redirects to avoid untrusted URL redirection due to user-provided value
+
+				if ( validRedirects.has( file ) === true ) {
+
+					selectFile( file );
+					viewer.src = validRedirects.get( file );
+					viewer.style.display = 'unset';
+
+				}
+
+			}
+
+			if ( selected === null ) {
+
+				panel.classList.add( 'open' );
+
+			}
+
+			if ( viewer.src === '' ) {
+
+				viewer.srcdoc = document.getElementById( 'PlaceholderHTML' ).innerHTML;
+				viewer.style.display = 'unset';
+
+			}
+
+			filterInput.value = extractQuery();
+
+			if ( filterInput.value !== '' ) {
+
+				panel.classList.add( 'searchFocused' );
+
+				updateFilter( files, tags );
+
+			}
+
+			// Events
+
+			filterInput.onfocus = function ( ) {
+
+				panel.classList.add( 'searchFocused' );
+
+			};
+
+			filterInput.onblur = function ( ) {
+
+				if ( filterInput.value === '' ) {
+
+					panel.classList.remove( 'searchFocused' );
+
+				}
+
+			};
+
+			clearSearchButton.onclick = function ( ) {
+
+				filterInput.value = '';
+				updateFilter( files, tags );
+				filterInput.focus();
+
+			};
+
+			filterInput.addEventListener( 'input', function () {
+
+				updateFilter( files, tags );
+
+			} );
+
+
+			expandButton.addEventListener( 'click', function ( event ) {
+
+				event.preventDefault();
+				panel.classList.toggle( 'open' );
+
+			} );
+
+			panelScrim.onclick = function ( event ) {
+
+				event.preventDefault();
+				panel.classList.toggle( 'open' );
+
+			};
+
+			previewsToggler.onclick = function ( event ) {
+
+				event.preventDefault();
+				content.classList.toggle( 'minimal' );
+
+			};
+
+			// iOS iframe auto-resize workaround
+
+			if ( /(iPad|iPhone|iPod)/g.test( navigator.userAgent ) ) {
+
+				viewer.style.width = getComputedStyle( viewer ).width;
+				viewer.style.height = getComputedStyle( viewer ).height;
+				viewer.setAttribute( 'scrolling', 'no' );
+
+			}
 
 		}
 
-		var panel = document.getElementById( 'panel' );
-		var content = document.getElementById( 'content' );
-		var viewer = document.getElementById( 'viewer' );
+		function createLink( file, tags ) {
 
-		var filterInput = document.getElementById( 'filter' );
-		var exitSearchButton = document.getElementById( 'exitSearchButton' );
+			const community = Array.isArray( tags ) && tags.includes( 'community' ) ? '<span class="tag">community</span>' : '';
 
-		var expandButton = document.getElementById( 'expandButton' );
-		expandButton.addEventListener( 'click', function ( event ) {
+			let href = file + '.html';
 
-			event.preventDefault();
-			panel.classList.toggle( 'open' );
+			if ( file === 'css3d_mixed' ) {
 
-		} );
+				href += `?${ new Date().getTime() }`;
 
-		var panelScrim = document.getElementById( 'panelScrim' );
-		panelScrim.onclick = function ( event ) {
+			}
 
-			event.preventDefault();
-			panel.classList.toggle( 'open' );
+			const template = `
+				<div class="card">
+					<a href="${ href }" target="viewer">
+						<div class="cover">
+							<img src="screenshots/${ file }.jpg" loading="lazy" width="400" />
+							${ community }
+						</div>
+						<div class="title">${ getName( file ) }</div>
+					</a>
+				</div>
+			`;
 
-		};
+			const link = createElementFromHTML( template );
 
-		// iOS iframe auto-resize workaround
-
-		if ( /(iPad|iPhone|iPod)/g.test( navigator.userAgent ) ) {
-
-			viewer.style.width = getComputedStyle( viewer ).width;
-			viewer.style.height = getComputedStyle( viewer ).height;
-			viewer.setAttribute( 'scrolling', 'no' );
-
-		}
-
-		var container = document.createElement( 'div' );
-		content.appendChild( container );
-
-		var viewSrcButton = document.getElementById( 'button' );
-		viewSrcButton.style.display = 'none';
-
-		var links = {};
-		var selected = null;
-
-		function createLink( file ) {
-
-			var link = document.createElement( 'a' );
-			link.className = 'link';
-			link.href = file + '.html';
-			link.textContent = getName( file );
-			link.setAttribute( 'target', 'viewer' );
-			link.addEventListener( 'click', function ( event ) {
+			link.querySelector( 'a[target="viewer"]' ).addEventListener( 'click', function ( event ) {
 
 				if ( event.button !== 0 || event.ctrlKey || event.altKey || event.metaKey ) return;
 
@@ -124,35 +237,6 @@
 
 		}
 
-		for ( var key in files ) {
-
-			var section = files[ key ];
-
-			var header = document.createElement( 'h2' );
-			header.textContent = key;
-			header.setAttribute( 'data-category', key );
-			container.appendChild( header );
-
-			for ( var i = 0; i < section.length; i ++ ) {
-
-				var file = section[ i ];
-
-				var link = createLink( file );
-				container.appendChild( link );
-
-				links[ file ] = link;
-
-			}
-
-		}
-
-		function loadFile( file ) {
-
-			selectFile( file );
-			viewer.src = file + '.html';
-
-		}
-
 		function selectFile( file ) {
 
 			if ( selected !== null ) links[ selected ].classList.remove( 'selected' );
@@ -161,6 +245,7 @@
 
 			window.location.hash = file;
 			viewer.focus();
+			viewer.style.display = 'unset';
 
 			panel.classList.remove( 'open' );
 
@@ -173,46 +258,18 @@
 
 		}
 
-		if ( window.location.hash !== '' && links[ window.location.hash.substring( 1 ) ] ) {
+		function escapeRegExp( string ) {
 
-			loadFile( window.location.hash.substring( 1 ) );
+			string = string.replace( /[.*+?^${}()|[\]\\]/g, '\\$&' ); // https://stackoverflow.com/a/6969486/5250847
+
+			return '(?=.*' + string.split( ' ' ).join( ')(?=.*' ) + ')'; // match all words, in any order
 
 		}
 
-		// filter
-		filterInput.onfocus = function ( event ) {
+		function updateFilter( files, tags ) {
 
-			panel.classList.add( 'searchFocused' );
-
-		};
-
-		filterInput.onblur = function ( event ) {
-
-			if ( filterInput.value === '' ) {
-
-				panel.classList.remove( 'searchFocused' );
-
-			}
-
-		};
-
-		exitSearchButton.onclick = function ( event ) {
-
-			filterInput.value = '';
-			updateFilter();
-			panel.classList.remove( 'searchFocused' );
-
-		};
-
-		filterInput.addEventListener( 'input', function () {
-
-			updateFilter();
-
-		} );
-
-		function updateFilter() {
-
-			var v = filterInput.value;
+			let v = filterInput.value.trim();
+			v = v.replace( /\s+/gi, ' ' ); // replace multiple whitespaces with a single one
 
 			if ( v !== '' ) {
 
@@ -224,47 +281,37 @@
 
 			}
 
-			var exp = new RegExp( v, 'gi' );
+			const exp = new RegExp( escapeRegExp( v ), 'gi' );
 
-			for ( var key in files ) {
+			for ( const key in files ) {
 
-				var section = files[ key ];
+				const section = files[ key ];
 
-				for ( var i = 0; i < section.length; i ++ ) {
+				for ( let i = 0; i < section.length; i ++ ) {
 
-					filterExample( section[ i ], exp );
+					filterExample( section[ i ], exp, tags );
 
 				}
 
 			}
 
-			layoutList();
+			layoutList( files );
 
 		}
 
-		function filterExample( file, exp ) {
+		function filterExample( file, exp, tags ) {
 
-			var link = links[ file ];
-			var name = getName( file );
-			var res = file.match( exp );
-			var text;
+			const link = links[ file ];
+			if ( file in tags ) file += ' ' + tags[ file ].join( ' ' );
+			const res = file.replace( /_+/g, ' ' ).match( exp );
 
 			if ( res && res.length > 0 ) {
 
 				link.classList.remove( 'hidden' );
 
-				for ( var i = 0; i < res.length; i ++ ) {
-
-					text = name.replace( res[ i ], '<b>' + res[ i ] + '</b>' );
-
-				}
-
-				link.innerHTML = text;
-
 			} else {
 
 				link.classList.add( 'hidden' );
-				link.innerHTML = name;
 
 			}
 
@@ -272,23 +319,23 @@
 
 		function getName( file ) {
 
-			var name = file.split( '_' );
+			const name = file.split( '_' );
 			name.shift();
 			return name.join( ' / ' );
 
 		}
 
-		function layoutList() {
+		function layoutList( files ) {
 
-			for ( var key in files ) {
+			for ( const key in files ) {
 
-				var collapsed = true;
+				let collapsed = true;
 
-				var section = files[ key ];
+				const section = files[ key ];
 
-				for ( var i = 0; i < section.length; i ++ ) {
+				for ( let i = 0; i < section.length; i ++ ) {
 
-					var file = section[ i ];
+					const file = section[ i ];
 
 					if ( links[ file ].classList.contains( 'hidden' ) === false ) {
 
@@ -299,7 +346,7 @@
 
 				}
 
-				var element = document.querySelector( 'h2[data-category="' + key + '"]' );
+				const element = document.querySelector( 'h2[data-category="' + key + '"]' );
 
 				if ( collapsed ) {
 
@@ -315,17 +362,54 @@
 
 		}
 
-		filterInput.value = extractQuery();
+		function extractQuery() {
 
-		if ( filterInput.value !== '' ) {
+			const search = window.location.search;
 
-			panel.classList.add( 'searchFocused' );
+			if ( search.indexOf( '?q=' ) !== - 1 ) {
+
+				return decodeURI( search.slice( 3 ) );
+
+			}
+
+			return '';
 
 		}
 
-		updateFilter();
+		function createElementFromHTML( htmlString ) {
+
+			const div = document.createElement( 'div' );
+			div.innerHTML = htmlString.trim();
+			return div.firstChild;
+
+		}
 
 		</script>
-
+		<template id="PlaceholderHTML">
+			<!DOCTYPE html>
+				<html lang="en">
+					<head>
+						<meta charset="utf-8">
+						<title>three.js examples</title>
+						<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+						<link rel="stylesheet" type="text/css" href="../files/main.css">
+						<style>
+						html, body {
+							height: 100%;
+						}
+						body {
+							height: 100%;
+							display: flex;
+							align-items: center;
+							justify-content: center;
+							user-select: none;
+						}
+						</style>
+					</head>
+					<body>
+						Select an example from the sidebar
+					</body>
+				</html>
+		</template>
 	</body>
 </html>

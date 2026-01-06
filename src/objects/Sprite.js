@@ -1,8 +1,3 @@
-/**
- * @author mikael emtinger / http://gomo.se/
- * @author alteredq / http://alteredqualia.com/
- */
-
 import { Vector2 } from '../math/Vector2.js';
 import { Vector3 } from '../math/Vector3.js';
 import { Matrix4 } from '../math/Matrix4.js';
@@ -12,68 +7,130 @@ import { BufferGeometry } from '../core/BufferGeometry.js';
 import { InterleavedBuffer } from '../core/InterleavedBuffer.js';
 import { InterleavedBufferAttribute } from '../core/InterleavedBufferAttribute.js';
 import { SpriteMaterial } from '../materials/SpriteMaterial.js';
+import { error } from '../utils.js';
 
-var _geometry;
+let _geometry;
 
-var _intersectPoint = new Vector3();
-var _worldScale = new Vector3();
-var _mvPosition = new Vector3();
+const _intersectPoint = /*@__PURE__*/ new Vector3();
+const _worldScale = /*@__PURE__*/ new Vector3();
+const _mvPosition = /*@__PURE__*/ new Vector3();
 
-var _alignedPosition = new Vector2();
-var _rotatedPosition = new Vector2();
-var _viewWorldMatrix = new Matrix4();
+const _alignedPosition = /*@__PURE__*/ new Vector2();
+const _rotatedPosition = /*@__PURE__*/ new Vector2();
+const _viewWorldMatrix = /*@__PURE__*/ new Matrix4();
 
-var _vA = new Vector3();
-var _vB = new Vector3();
-var _vC = new Vector3();
+const _vA = /*@__PURE__*/ new Vector3();
+const _vB = /*@__PURE__*/ new Vector3();
+const _vC = /*@__PURE__*/ new Vector3();
 
-var _uvA = new Vector2();
-var _uvB = new Vector2();
-var _uvC = new Vector2();
+const _uvA = /*@__PURE__*/ new Vector2();
+const _uvB = /*@__PURE__*/ new Vector2();
+const _uvC = /*@__PURE__*/ new Vector2();
 
-function Sprite( material ) {
+/**
+ * A sprite is a plane that always faces towards the camera, generally with a
+ * partially transparent texture applied.
+ *
+ * Sprites do not cast shadows, setting {@link Object3D#castShadow} to `true` will
+ * have no effect.
+ *
+ * ```js
+ * const map = new THREE.TextureLoader().load( 'sprite.png' );
+ * const material = new THREE.SpriteMaterial( { map: map } );
+ *
+ * const sprite = new THREE.Sprite( material );
+ * scene.add( sprite );
+ * ```
+ *
+ * @augments Object3D
+ */
+class Sprite extends Object3D {
 
-	Object3D.call( this );
+	/**
+	 * Constructs a new sprite.
+	 *
+	 * @param {(SpriteMaterial|SpriteNodeMaterial)} [material] - The sprite material.
+	 */
+	constructor( material = new SpriteMaterial() ) {
 
-	this.type = 'Sprite';
+		super();
 
-	if ( _geometry === undefined ) {
+		/**
+		 * This flag can be used for type testing.
+		 *
+		 * @type {boolean}
+		 * @readonly
+		 * @default true
+		 */
+		this.isSprite = true;
 
-		_geometry = new BufferGeometry();
+		this.type = 'Sprite';
 
-		var float32Array = new Float32Array( [
-			- 0.5, - 0.5, 0, 0, 0,
-			0.5, - 0.5, 0, 1, 0,
-			0.5, 0.5, 0, 1, 1,
-			- 0.5, 0.5, 0, 0, 1
-		] );
+		if ( _geometry === undefined ) {
 
-		var interleavedBuffer = new InterleavedBuffer( float32Array, 5 );
+			_geometry = new BufferGeometry();
 
-		_geometry.setIndex( [ 0, 1, 2,	0, 2, 3 ] );
-		_geometry.setAttribute( 'position', new InterleavedBufferAttribute( interleavedBuffer, 3, 0, false ) );
-		_geometry.setAttribute( 'uv', new InterleavedBufferAttribute( interleavedBuffer, 2, 3, false ) );
+			const float32Array = new Float32Array( [
+				- 0.5, - 0.5, 0, 0, 0,
+				0.5, - 0.5, 0, 1, 0,
+				0.5, 0.5, 0, 1, 1,
+				- 0.5, 0.5, 0, 0, 1
+			] );
+
+			const interleavedBuffer = new InterleavedBuffer( float32Array, 5 );
+
+			_geometry.setIndex( [ 0, 1, 2,	0, 2, 3 ] );
+			_geometry.setAttribute( 'position', new InterleavedBufferAttribute( interleavedBuffer, 3, 0, false ) );
+			_geometry.setAttribute( 'uv', new InterleavedBufferAttribute( interleavedBuffer, 2, 3, false ) );
+
+		}
+
+		/**
+		 * The sprite geometry.
+		 *
+		 * @type {BufferGeometry}
+		 */
+		this.geometry = _geometry;
+
+		/**
+		 * The sprite material.
+		 *
+		 * @type {(SpriteMaterial|SpriteNodeMaterial)}
+		 */
+		this.material = material;
+
+		/**
+		 * The sprite's anchor point, and the point around which the sprite rotates.
+		 * A value of `(0.5, 0.5)` corresponds to the midpoint of the sprite. A value
+		 * of `(0, 0)` corresponds to the lower left corner of the sprite.
+		 *
+		 * @type {Vector2}
+		 * @default (0.5,0.5)
+		 */
+		this.center = new Vector2( 0.5, 0.5 );
+
+		/**
+		 * The number of instances of this sprite.
+		 * Can only be used with {@link WebGPURenderer}.
+		 *
+		 * @type {number}
+		 * @default 1
+		 */
+		this.count = 1;
 
 	}
 
-	this.geometry = _geometry;
-	this.material = ( material !== undefined ) ? material : new SpriteMaterial();
-
-	this.center = new Vector2( 0.5, 0.5 );
-
-}
-
-Sprite.prototype = Object.assign( Object.create( Object3D.prototype ), {
-
-	constructor: Sprite,
-
-	isSprite: true,
-
-	raycast: function ( raycaster, intersects ) {
+	/**
+	 * Computes intersection points between a casted ray and this sprite.
+	 *
+	 * @param {Raycaster} raycaster - The raycaster.
+	 * @param {Array<Object>} intersects - The target array that holds the intersection points.
+	 */
+	raycast( raycaster, intersects ) {
 
 		if ( raycaster.camera === null ) {
 
-			console.error( 'THREE.Sprite: "Raycaster.camera" needs to be set in order to raycast against sprites.' );
+			error( 'Sprite: "Raycaster.camera" needs to be set in order to raycast against sprites.' );
 
 		}
 
@@ -90,8 +147,9 @@ Sprite.prototype = Object.assign( Object.create( Object3D.prototype ), {
 
 		}
 
-		var rotation = this.material.rotation;
-		var sin, cos;
+		const rotation = this.material.rotation;
+		let sin, cos;
+
 		if ( rotation !== 0 ) {
 
 			cos = Math.cos( rotation );
@@ -99,7 +157,7 @@ Sprite.prototype = Object.assign( Object.create( Object3D.prototype ), {
 
 		}
 
-		var center = this.center;
+		const center = this.center;
 
 		transformVertex( _vA.set( - 0.5, - 0.5, 0 ), _mvPosition, center, _worldScale, sin, cos );
 		transformVertex( _vB.set( 0.5, - 0.5, 0 ), _mvPosition, center, _worldScale, sin, cos );
@@ -110,7 +168,7 @@ Sprite.prototype = Object.assign( Object.create( Object3D.prototype ), {
 		_uvC.set( 1, 1 );
 
 		// check first triangle
-		var intersect = raycaster.ray.intersectTriangle( _vA, _vB, _vC, false, _intersectPoint );
+		let intersect = raycaster.ray.intersectTriangle( _vA, _vB, _vC, false, _intersectPoint );
 
 		if ( intersect === null ) {
 
@@ -127,7 +185,7 @@ Sprite.prototype = Object.assign( Object.create( Object3D.prototype ), {
 
 		}
 
-		var distance = raycaster.ray.origin.distanceTo( _intersectPoint );
+		const distance = raycaster.ray.origin.distanceTo( _intersectPoint );
 
 		if ( distance < raycaster.near || distance > raycaster.far ) return;
 
@@ -135,32 +193,27 @@ Sprite.prototype = Object.assign( Object.create( Object3D.prototype ), {
 
 			distance: distance,
 			point: _intersectPoint.clone(),
-			uv: Triangle.getUV( _intersectPoint, _vA, _vB, _vC, _uvA, _uvB, _uvC, new Vector2() ),
+			uv: Triangle.getInterpolation( _intersectPoint, _vA, _vB, _vC, _uvA, _uvB, _uvC, new Vector2() ),
 			face: null,
 			object: this
 
 		} );
 
-	},
+	}
 
-	clone: function () {
+	copy( source, recursive ) {
 
-		return new this.constructor( this.material ).copy( this );
-
-	},
-
-	copy: function ( source ) {
-
-		Object3D.prototype.copy.call( this, source );
+		super.copy( source, recursive );
 
 		if ( source.center !== undefined ) this.center.copy( source.center );
+
+		this.material = source.material;
 
 		return this;
 
 	}
 
-
-} );
+}
 
 function transformVertex( vertexPosition, mvPosition, center, scale, sin, cos ) {
 

@@ -1,10 +1,8 @@
-/**
- * @author munrocket / https://github.com/munrocket
- */
-
 ( function () {
 
 	/* Deterministic random */
+
+	window.Math._random = window.Math.random;
 
 	let seed = Math.PI / 4;
 	window.Math.random = function () {
@@ -14,57 +12,47 @@
 
 	};
 
-
 	/* Deterministic timer */
 
-	let frameId = 0;
-	const now = () => frameId * 16;
+	window.performance._now = performance.now;
+
+	const now = () => 0; // frameId * 16;
 	window.Date.now = now;
 	window.Date.prototype.getTime = now;
-	window.performance.wow = performance.now;
 	window.performance.now = now;
-
 
 	/* Deterministic RAF */
 
-	window.chromeMaxFrameId = 1;
-	window.chromeRenderStarted = false;
-	window.chromeRenderFinished = false;
-	const RAF = window.requestAnimationFrame;
+	window._renderStarted = false;
+	window._renderFinished = false;
+
 	window.requestAnimationFrame = function ( cb ) {
 
-		if ( ! chromeRenderStarted ) {
+		if ( window._renderFinished === true ) return;
 
-			setTimeout( function () {
+		if ( window._renderStarted === false ) {
 
-				requestAnimationFrame( cb );
+			const intervalId = setInterval( function () {
 
-			}, 50 );
-
-		} else {
-
-			RAF( function () {
-
-				if ( frameId ++ < chromeMaxFrameId ) {
+				if ( window._renderStarted === true ) {
 
 					cb( now() );
 
-				} else {
-
-					chromeRenderFinished = true;
+					clearInterval( intervalId );
+					window._renderFinished = true;
 
 				}
 
-			} );
+			}, 100 );
 
 		}
 
 	};
 
+	/* Semi-deterministic video */
 
-	/* Semi-determitistic video */
+	const play = HTMLVideoElement.prototype.play;
 
-	let play = HTMLVideoElement.prototype.play;
 	HTMLVideoElement.prototype.play = async function () {
 
 		play.call( this );
@@ -74,11 +62,16 @@
 
 			this.load();
 			play.call( this );
-			RAF( renew );
+			RAF( renew ); // eslint-disable-line no-undef
 
 		}
-		RAF( renew );
+
+		RAF( renew ); // eslint-disable-line no-undef
 
 	};
+
+	/* Additional variable for ~5 examples */
+
+	window.TESTING = true;
 
 }() );

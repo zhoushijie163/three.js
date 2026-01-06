@@ -1,27 +1,37 @@
 /**
- * @author mrdoob / http://mrdoob.com
- * @author Mugen87 / https://github.com/Mugen87
+ * A utility class for creating a button that allows to initiate
+ * immersive VR sessions based on WebXR. The button can be created
+ * with a factory method and then appended ot the website's DOM.
+ *
+ * ```js
+ * document.body.appendChild( VRButton.createButton( renderer ) );
+ * ```
+ *
+ * @hideconstructor
+ * @three_import import { VRButton } from 'three/addons/webxr/VRButton.js';
  */
+class VRButton {
 
-var VRButton = {
+	/**
+	 * Constructs a new VR button.
+	 *
+	 * @param {WebGLRenderer|WebGPURenderer} renderer - The renderer.
+	 * @param {XRSessionInit} [sessionInit] - The a configuration object for the AR session.
+	 * @return {HTMLElement} The button or an error message if `immersive-ar` isn't supported.
+	 */
+	static createButton( renderer, sessionInit = {} ) {
 
-	createButton: function ( renderer, options ) {
-
-		if ( options && options.referenceSpaceType ) {
-
-			renderer.xr.setReferenceSpaceType( options.referenceSpaceType );
-
-		}
+		const button = document.createElement( 'button' );
 
 		function showEnterVR( /*device*/ ) {
 
-			var currentSession = null;
+			let currentSession = null;
 
-			function onSessionStarted( session ) {
+			async function onSessionStarted( session ) {
 
 				session.addEventListener( 'end', onSessionEnded );
 
-				renderer.xr.setSession( session );
+				await renderer.xr.setSession( session );
 				button.textContent = 'EXIT VR';
 
 				currentSession = session;
@@ -48,6 +58,23 @@ var VRButton = {
 
 			button.textContent = 'ENTER VR';
 
+			// WebXR's requestReferenceSpace only works if the corresponding feature
+			// was requested at session creation time. For simplicity, just ask for
+			// the interesting ones as optional features, but be aware that the
+			// requestReferenceSpace call will fail if it turns out to be unavailable.
+			// ('local' is always available for immersive sessions and doesn't need to
+			// be requested separately.)
+
+			const sessionOptions = {
+				...sessionInit,
+				optionalFeatures: [
+					'local-floor',
+					'bounded-floor',
+					'layers',
+					...( sessionInit.optionalFeatures || [] )
+				],
+			};
+
 			button.onmouseenter = function () {
 
 				button.style.opacity = '1.0';
@@ -64,23 +91,39 @@ var VRButton = {
 
 				if ( currentSession === null ) {
 
-					// WebXR's requestReferenceSpace only works if the corresponding feature
-					// was requested at session creation time. For simplicity, just ask for
-					// the interesting ones as optional features, but be aware that the
-					// requestReferenceSpace call will fail if it turns out to be unavailable.
-					// ('local' is always available for immersive sessions and doesn't need to
-					// be requested separately.)
-
-					var sessionInit = { optionalFeatures: [ 'local-floor', 'bounded-floor' ] };
-					navigator.xr.requestSession( 'immersive-vr', sessionInit ).then( onSessionStarted );
+					navigator.xr.requestSession( 'immersive-vr', sessionOptions ).then( onSessionStarted );
 
 				} else {
 
 					currentSession.end();
 
+					if ( navigator.xr.offerSession !== undefined ) {
+
+						navigator.xr.offerSession( 'immersive-vr', sessionOptions )
+							.then( onSessionStarted )
+							.catch( ( err ) => {
+
+								console.warn( err );
+
+							} );
+
+					}
+
 				}
 
 			};
+
+			if ( navigator.xr.offerSession !== undefined ) {
+
+				navigator.xr.offerSession( 'immersive-vr', sessionOptions )
+					.then( onSessionStarted )
+					.catch( ( err ) => {
+
+						console.warn( err );
+
+					} );
+
+			}
 
 		}
 
@@ -107,6 +150,16 @@ var VRButton = {
 
 		}
 
+		function showVRNotAllowed( exception ) {
+
+			disableButton();
+
+			console.warn( 'Exception when trying to call xr.isSessionSupported', exception );
+
+			button.textContent = 'VR NOT ALLOWED';
+
+		}
+
 		function stylizeElement( element ) {
 
 			element.style.position = 'absolute';
@@ -126,7 +179,7 @@ var VRButton = {
 
 		if ( 'xr' in navigator ) {
 
-			var button = document.createElement( 'button' );
+			button.id = 'VRButton';
 			button.style.display = 'none';
 
 			stylizeElement( button );
@@ -135,13 +188,19 @@ var VRButton = {
 
 				supported ? showEnterVR() : showWebXRNotFound();
 
-			} );
+				if ( supported && VRButton.xrSessionIsGranted ) {
+
+					button.click();
+
+				}
+
+			} ).catch( showVRNotAllowed );
 
 			return button;
 
 		} else {
 
-			var message = document.createElement( 'a' );
+			const message = document.createElement( 'a' );
 
 			if ( window.isSecureContext === false ) {
 
@@ -167,6 +226,39 @@ var VRButton = {
 
 	}
 
-};
+	/**
+	 * Registers a `sessiongranted` event listener. When a session is granted, the {@link VRButton#xrSessionIsGranted}
+	 * flag will evaluate to `true`. This method is automatically called by the module itself so there
+	 * should be no need to use it on app level.
+	 */
+	static registerSessionGrantedListener() {
+
+		if ( typeof navigator !== 'undefined' && 'xr' in navigator ) {
+
+			// WebXRViewer (based on Firefox) has a bug where addEventListener
+			// throws a silent exception and aborts execution entirely.
+			if ( /WebXRViewer\//i.test( navigator.userAgent ) ) return;
+
+			navigator.xr.addEventListener( 'sessiongranted', () => {
+
+				VRButton.xrSessionIsGranted = true;
+
+			} );
+
+		}
+
+	}
+
+}
+
+/**
+ * Whether a XR session has been granted or not.
+ *
+ * @static
+ * @type {boolean}
+ * @default false
+ */
+VRButton.xrSessionIsGranted = false;
+VRButton.registerSessionGrantedListener();
 
 export { VRButton };

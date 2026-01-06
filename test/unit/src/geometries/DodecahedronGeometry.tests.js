@@ -1,19 +1,13 @@
-/**
- * @author TristanVALCKE / https://github.com/Itee
- * @author Anonymous
- */
-/* global QUnit */
+import { DodecahedronGeometry } from '../../../../src/geometries/DodecahedronGeometry.js';
 
-import { runStdGeometryTests } from '../../qunit-utils';
-import {
-	DodecahedronBufferGeometry
-} from '../../../../src/geometries/DodecahedronGeometry';
+import { PolyhedronGeometry } from '../../../../src/geometries/PolyhedronGeometry.js';
+import { runStdGeometryTests } from '../../utils/qunit-utils.js';
 
 export default QUnit.module( 'Geometries', () => {
 
-	QUnit.module( 'CircleBufferGeometry', ( hooks ) => {
+	QUnit.module( 'DodecahedronGeometry', ( hooks ) => {
 
-		var geometries = undefined;
+		let geometries = undefined;
 		hooks.beforeEach( function () {
 
 			const parameters = {
@@ -22,24 +16,40 @@ export default QUnit.module( 'Geometries', () => {
 			};
 
 			geometries = [
-				new DodecahedronBufferGeometry(),
-				new DodecahedronBufferGeometry( parameters.radius ),
-				new DodecahedronBufferGeometry( parameters.radius, parameters.detail ),
+				new DodecahedronGeometry(),
+				new DodecahedronGeometry( parameters.radius ),
+				new DodecahedronGeometry( parameters.radius, parameters.detail ),
 			];
 
 		} );
 
 		// INHERITANCE
-		QUnit.todo( "Extending", ( assert ) => {
+		QUnit.test( 'Extending', ( assert ) => {
 
-			assert.ok( false, "everything's gonna be alright" );
+			const object = new DodecahedronGeometry();
+			assert.strictEqual(
+				object instanceof PolyhedronGeometry, true,
+				'DodecahedronGeometry extends from PolyhedronGeometry'
+			);
 
 		} );
 
 		// INSTANCING
-		QUnit.todo( "Instancing", ( assert ) => {
+		QUnit.test( 'Instancing', ( assert ) => {
 
-			assert.ok( false, "everything's gonna be alright" );
+			const object = new DodecahedronGeometry();
+			assert.ok( object, 'Can instantiate a DodecahedronGeometry.' );
+
+		} );
+
+		// PROPERTIES
+		QUnit.test( 'type', ( assert ) => {
+
+			const object = new DodecahedronGeometry();
+			assert.ok(
+				object.type === 'DodecahedronGeometry',
+				'DodecahedronGeometry.type should be DodecahedronGeometry'
+			);
 
 		} );
 

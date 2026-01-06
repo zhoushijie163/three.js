@@ -1,38 +1,50 @@
-/**
- * @author TristanVALCKE / https://github.com/Itee
- */
-/* global QUnit */
+import { MeshPhysicalMaterial } from '../../../../src/materials/MeshPhysicalMaterial.js';
 
-import { MeshPhysicalMaterial } from '../../../../src/materials/MeshPhysicalMaterial';
+import { Material } from '../../../../src/materials/Material.js';
 
 export default QUnit.module( 'Materials', () => {
 
 	QUnit.module( 'MeshPhysicalMaterial', () => {
 
 		// INHERITANCE
-		QUnit.todo( "Extending", ( assert ) => {
+		QUnit.test( 'Extending', ( assert ) => {
 
-			assert.ok( false, "everything's gonna be alright" );
+			const object = new MeshPhysicalMaterial();
+			assert.strictEqual(
+				object instanceof Material, true,
+				'MeshPhysicalMaterial extends from Material'
+			);
 
 		} );
 
 		// INSTANCING
-		QUnit.todo( "Instancing", ( assert ) => {
+		QUnit.test( 'Instancing', ( assert ) => {
 
-			assert.ok( false, "everything's gonna be alright" );
-
-		} );
-
-		// PUBLIC STUFF
-		QUnit.todo( "isMeshPhysicalMaterial", ( assert ) => {
-
-			assert.ok( false, "everything's gonna be alright" );
+			const object = new MeshPhysicalMaterial();
+			assert.ok( object, 'Can instantiate a MeshPhysicalMaterial.' );
 
 		} );
 
-		QUnit.todo( "copy", ( assert ) => {
+		// PROPERTIES
 
-			assert.ok( false, "everything's gonna be alright" );
+		QUnit.test( 'type', ( assert ) => {
+
+			const object = new MeshPhysicalMaterial();
+			assert.ok(
+				object.type === 'MeshPhysicalMaterial',
+				'MeshPhysicalMaterial.type should be MeshPhysicalMaterial'
+			);
+
+		} );
+
+		// PUBLIC
+		QUnit.test( 'isMeshPhysicalMaterial', ( assert ) => {
+
+			const object = new MeshPhysicalMaterial();
+			assert.ok(
+				object.isMeshPhysicalMaterial,
+				'MeshPhysicalMaterial.isMeshPhysicalMaterial should be true'
+			);
 
 		} );
 

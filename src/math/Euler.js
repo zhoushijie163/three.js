@@ -1,126 +1,171 @@
 import { Quaternion } from './Quaternion.js';
-import { Vector3 } from './Vector3.js';
 import { Matrix4 } from './Matrix4.js';
-import { MathUtils } from './MathUtils.js';
+import { clamp } from './MathUtils.js';
+import { warn } from '../utils.js';
+
+const _matrix = /*@__PURE__*/ new Matrix4();
+const _quaternion = /*@__PURE__*/ new Quaternion();
 
 /**
- * @author mrdoob / http://mrdoob.com/
- * @author WestLangley / http://github.com/WestLangley
- * @author bhouston / http://clara.io
+ * A class representing Euler angles.
+ *
+ * Euler angles describe a rotational transformation by rotating an object on
+ * its various axes in specified amounts per axis, and a specified axis
+ * order.
+ *
+ * Iterating through an instance will yield its components (x, y, z,
+ * order) in the corresponding order.
+ *
+ * ```js
+ * const a = new THREE.Euler( 0, 1, 1.57, 'XYZ' );
+ * const b = new THREE.Vector3( 1, 0, 1 );
+ * b.applyEuler(a);
+ * ```
  */
+class Euler {
 
-var _matrix = new Matrix4();
-var _quaternion = new Quaternion();
+	/**
+	 * Constructs a new euler instance.
+	 *
+	 * @param {number} [x=0] - The angle of the x axis in radians.
+	 * @param {number} [y=0] - The angle of the y axis in radians.
+	 * @param {number} [z=0] - The angle of the z axis in radians.
+	 * @param {string} [order=Euler.DEFAULT_ORDER] - A string representing the order that the rotations are applied.
+	 */
+	constructor( x = 0, y = 0, z = 0, order = Euler.DEFAULT_ORDER ) {
 
-function Euler( x, y, z, order ) {
-
-	this._x = x || 0;
-	this._y = y || 0;
-	this._z = z || 0;
-	this._order = order || Euler.DefaultOrder;
-
-}
-
-Euler.RotationOrders = [ 'XYZ', 'YZX', 'ZXY', 'XZY', 'YXZ', 'ZYX' ];
-
-Euler.DefaultOrder = 'XYZ';
-
-Object.defineProperties( Euler.prototype, {
-
-	x: {
-
-		get: function () {
-
-			return this._x;
-
-		},
-
-		set: function ( value ) {
-
-			this._x = value;
-			this._onChangeCallback();
-
-		}
-
-	},
-
-	y: {
-
-		get: function () {
-
-			return this._y;
-
-		},
-
-		set: function ( value ) {
-
-			this._y = value;
-			this._onChangeCallback();
-
-		}
-
-	},
-
-	z: {
-
-		get: function () {
-
-			return this._z;
-
-		},
-
-		set: function ( value ) {
-
-			this._z = value;
-			this._onChangeCallback();
-
-		}
-
-	},
-
-	order: {
-
-		get: function () {
-
-			return this._order;
-
-		},
-
-		set: function ( value ) {
-
-			this._order = value;
-			this._onChangeCallback();
-
-		}
-
-	}
-
-} );
-
-Object.assign( Euler.prototype, {
-
-	isEuler: true,
-
-	set: function ( x, y, z, order ) {
+		/**
+		 * This flag can be used for type testing.
+		 *
+		 * @type {boolean}
+		 * @readonly
+		 * @default true
+		 */
+		this.isEuler = true;
 
 		this._x = x;
 		this._y = y;
 		this._z = z;
-		this._order = order || this._order;
+		this._order = order;
+
+	}
+
+	/**
+	 * The angle of the x axis in radians.
+	 *
+	 * @type {number}
+	 * @default 0
+	 */
+	get x() {
+
+		return this._x;
+
+	}
+
+	set x( value ) {
+
+		this._x = value;
+		this._onChangeCallback();
+
+	}
+
+	/**
+	 * The angle of the y axis in radians.
+	 *
+	 * @type {number}
+	 * @default 0
+	 */
+	get y() {
+
+		return this._y;
+
+	}
+
+	set y( value ) {
+
+		this._y = value;
+		this._onChangeCallback();
+
+	}
+
+	/**
+	 * The angle of the z axis in radians.
+	 *
+	 * @type {number}
+	 * @default 0
+	 */
+	get z() {
+
+		return this._z;
+
+	}
+
+	set z( value ) {
+
+		this._z = value;
+		this._onChangeCallback();
+
+	}
+
+	/**
+	 * A string representing the order that the rotations are applied.
+	 *
+	 * @type {string}
+	 * @default 'XYZ'
+	 */
+	get order() {
+
+		return this._order;
+
+	}
+
+	set order( value ) {
+
+		this._order = value;
+		this._onChangeCallback();
+
+	}
+
+	/**
+	 * Sets the Euler components.
+	 *
+	 * @param {number} x - The angle of the x axis in radians.
+	 * @param {number} y - The angle of the y axis in radians.
+	 * @param {number} z - The angle of the z axis in radians.
+	 * @param {string} [order] - A string representing the order that the rotations are applied.
+	 * @return {Euler} A reference to this Euler instance.
+	 */
+	set( x, y, z, order = this._order ) {
+
+		this._x = x;
+		this._y = y;
+		this._z = z;
+		this._order = order;
 
 		this._onChangeCallback();
 
 		return this;
 
-	},
+	}
 
-	clone: function () {
+	/**
+	 * Returns a new Euler instance with copied values from this instance.
+	 *
+	 * @return {Euler} A clone of this instance.
+	 */
+	clone() {
 
 		return new this.constructor( this._x, this._y, this._z, this._order );
 
-	},
+	}
 
-	copy: function ( euler ) {
+	/**
+	 * Copies the values of the given Euler instance to this instance.
+	 *
+	 * @param {Euler} euler - The Euler instance to copy.
+	 * @return {Euler} A reference to this Euler instance.
+	 */
+	copy( euler ) {
 
 		this._x = euler._x;
 		this._y = euler._y;
@@ -131,20 +176,22 @@ Object.assign( Euler.prototype, {
 
 		return this;
 
-	},
+	}
 
-	setFromRotationMatrix: function ( m, order, update ) {
+	/**
+	 * Sets the angles of this Euler instance from a pure rotation matrix.
+	 *
+	 * @param {Matrix4} m - A 4x4 matrix of which the upper 3x3 of matrix is a pure rotation matrix (i.e. unscaled).
+	 * @param {string} [order] - A string representing the order that the rotations are applied.
+	 * @param {boolean} [update=true] - Whether the internal `onChange` callback should be executed or not.
+	 * @return {Euler} A reference to this Euler instance.
+	 */
+	setFromRotationMatrix( m, order = this._order, update = true ) {
 
-		var clamp = MathUtils.clamp;
-
-		// assumes the upper 3x3 of m is a pure rotation matrix (i.e, unscaled)
-
-		var te = m.elements;
-		var m11 = te[ 0 ], m12 = te[ 4 ], m13 = te[ 8 ];
-		var m21 = te[ 1 ], m22 = te[ 5 ], m23 = te[ 9 ];
-		var m31 = te[ 2 ], m32 = te[ 6 ], m33 = te[ 10 ];
-
-		order = order || this._order;
+		const te = m.elements;
+		const m11 = te[ 0 ], m12 = te[ 4 ], m13 = te[ 8 ];
+		const m21 = te[ 1 ], m22 = te[ 5 ], m23 = te[ 9 ];
+		const m31 = te[ 2 ], m32 = te[ 6 ], m33 = te[ 10 ];
 
 		switch ( order ) {
 
@@ -258,49 +305,86 @@ Object.assign( Euler.prototype, {
 
 			default:
 
-				console.warn( 'THREE.Euler: .setFromRotationMatrix() encountered an unknown order: ' + order );
+				warn( 'Euler: .setFromRotationMatrix() encountered an unknown order: ' + order );
 
 		}
 
 		this._order = order;
 
-		if ( update !== false ) this._onChangeCallback();
+		if ( update === true ) this._onChangeCallback();
 
 		return this;
 
-	},
+	}
 
-	setFromQuaternion: function ( q, order, update ) {
+	/**
+	 * Sets the angles of this Euler instance from a normalized quaternion.
+	 *
+	 * @param {Quaternion} q - A normalized Quaternion.
+	 * @param {string} [order] - A string representing the order that the rotations are applied.
+	 * @param {boolean} [update=true] - Whether the internal `onChange` callback should be executed or not.
+	 * @return {Euler} A reference to this Euler instance.
+	 */
+	setFromQuaternion( q, order, update ) {
 
 		_matrix.makeRotationFromQuaternion( q );
 
 		return this.setFromRotationMatrix( _matrix, order, update );
 
-	},
+	}
 
-	setFromVector3: function ( v, order ) {
+	/**
+	 * Sets the angles of this Euler instance from the given vector.
+	 *
+	 * @param {Vector3} v - The vector.
+	 * @param {string} [order] - A string representing the order that the rotations are applied.
+	 * @return {Euler} A reference to this Euler instance.
+	 */
+	setFromVector3( v, order = this._order ) {
 
-		return this.set( v.x, v.y, v.z, order || this._order );
+		return this.set( v.x, v.y, v.z, order );
 
-	},
+	}
 
-	reorder: function ( newOrder ) {
-
-		// WARNING: this discards revolution information -bhouston
+	/**
+	 * Resets the euler angle with a new order by creating a quaternion from this
+	 * euler angle and then setting this euler angle with the quaternion and the
+	 * new order.
+	 *
+	 * Warning: This discards revolution information.
+	 *
+	 * @param {string} [newOrder] - A string representing the new order that the rotations are applied.
+	 * @return {Euler} A reference to this Euler instance.
+	 */
+	reorder( newOrder ) {
 
 		_quaternion.setFromEuler( this );
 
 		return this.setFromQuaternion( _quaternion, newOrder );
 
-	},
+	}
 
-	equals: function ( euler ) {
+	/**
+	 * Returns `true` if this Euler instance is equal with the given one.
+	 *
+	 * @param {Euler} euler - The Euler instance to test for equality.
+	 * @return {boolean} Whether this Euler instance is equal with the given one.
+	 */
+	equals( euler ) {
 
 		return ( euler._x === this._x ) && ( euler._y === this._y ) && ( euler._z === this._z ) && ( euler._order === this._order );
 
-	},
+	}
 
-	fromArray: function ( array ) {
+	/**
+	 * Sets this Euler instance's components to values from the given array. The first three
+	 * entries of the array are assign to the x,y and z components. An optional fourth entry
+	 * defines the Euler order.
+	 *
+	 * @param {Array<number,number,number,?string>} array - An array holding the Euler component values.
+	 * @return {Euler} A reference to this Euler instance.
+	 */
+	fromArray( array ) {
 
 		this._x = array[ 0 ];
 		this._y = array[ 1 ];
@@ -311,12 +395,17 @@ Object.assign( Euler.prototype, {
 
 		return this;
 
-	},
+	}
 
-	toArray: function ( array, offset ) {
-
-		if ( array === undefined ) array = [];
-		if ( offset === undefined ) offset = 0;
+	/**
+	 * Writes the components of this Euler instance to the given array. If no array is provided,
+	 * the method returns a new instance.
+	 *
+	 * @param {Array<number,number,number,string>} [array=[]] - The target array holding the Euler components.
+	 * @param {number} [offset=0] - Index of the first element in the array.
+	 * @return {Array<number,number,number,string>} The Euler components.
+	 */
+	toArray( array = [], offset = 0 ) {
 
 		array[ offset ] = this._x;
 		array[ offset + 1 ] = this._y;
@@ -325,33 +414,36 @@ Object.assign( Euler.prototype, {
 
 		return array;
 
-	},
+	}
 
-	toVector3: function ( optionalResult ) {
-
-		if ( optionalResult ) {
-
-			return optionalResult.set( this._x, this._y, this._z );
-
-		} else {
-
-			return new Vector3( this._x, this._y, this._z );
-
-		}
-
-	},
-
-	_onChange: function ( callback ) {
+	_onChange( callback ) {
 
 		this._onChangeCallback = callback;
 
 		return this;
 
-	},
+	}
 
-	_onChangeCallback: function () {}
+	_onChangeCallback() {}
 
-} );
+	*[ Symbol.iterator ]() {
 
+		yield this._x;
+		yield this._y;
+		yield this._z;
+		yield this._order;
+
+	}
+
+}
+
+/**
+ * The default Euler angle order.
+ *
+ * @static
+ * @type {string}
+ * @default 'XYZ'
+ */
+Euler.DEFAULT_ORDER = 'XYZ';
 
 export { Euler };

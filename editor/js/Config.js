@@ -1,14 +1,13 @@
-/**
- * @author mrdoob / http://mrdoob.com/
- */
+function Config() {
 
-var Config = function () {
+	const name = 'threejs-editor';
 
-	var name = 'threejs-editor';
+	const userLanguage = navigator.language.split( '-' )[ 0 ];
 
-	var storage = {
-		'language': 'en',
-		'exportPrecision': 6,
+	const suggestedLanguage = [ 'fr', 'ja', 'zh', 'ko', 'fa' ].includes( userLanguage ) ? userLanguage : 'en';
+
+	const storage = {
+		'language': suggestedLanguage,
 
 		'autosave': true,
 
@@ -19,10 +18,8 @@ var Config = function () {
 		'project/renderer/antialias': true,
 		'project/renderer/shadows': true,
 		'project/renderer/shadowType': 1, // PCF
-		'project/renderer/physicallyCorrectLights': false,
-		'project/renderer/toneMapping': 1, // linear
+		'project/renderer/toneMapping': 0, // NoToneMapping
 		'project/renderer/toneMappingExposure': 1,
-		'project/renderer/toneMappingWhitePoint': 1,
 
 		'settings/history': false,
 
@@ -39,9 +36,9 @@ var Config = function () {
 
 	} else {
 
-		var data = JSON.parse( window.localStorage[ name ] );
+		const data = JSON.parse( window.localStorage[ name ] );
 
-		for ( var key in data ) {
+		for ( const key in data ) {
 
 			storage[ key ] = data[ key ];
 
@@ -59,7 +56,7 @@ var Config = function () {
 
 		setKey: function () { // key, value, key, value ...
 
-			for ( var i = 0, l = arguments.length; i < l; i += 2 ) {
+			for ( let i = 0, l = arguments.length; i < l; i += 2 ) {
 
 				storage[ arguments[ i ] ] = arguments[ i + 1 ];
 
@@ -79,6 +76,6 @@ var Config = function () {
 
 	};
 
-};
+}
 
 export { Config };

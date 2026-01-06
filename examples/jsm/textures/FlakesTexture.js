@@ -1,30 +1,40 @@
 /**
- * @author mrdoob / http://mrdoob.com/
+ * Utility class for generating a flakes texture image. This image might be used
+ * as a normal map to produce a car paint like effect.
+ *
+ * @three_import import { FlakesTexture } from 'three/addons/textures/FlakesTexture.js';
  */
-
 class FlakesTexture {
 
+	/**
+	 * Generates a new flakes texture image. The result is a canvas
+	 * that can be used as an input for {@link CanvasTexture}.
+	 *
+	 * @param {number} [width=512] - The width of the image.
+	 * @param {number} [height=512] - The height of the image.
+	 * @return {HTMLCanvasElement} The generated image.
+	 */
 	constructor( width = 512, height = 512 ) {
 
-		var canvas = document.createElement( 'canvas' );
+		const canvas = document.createElement( 'canvas' );
 		canvas.width = width;
 		canvas.height = height;
 
-		var context = canvas.getContext( '2d' );
+		const context = canvas.getContext( '2d' );
 		context.fillStyle = 'rgb(127,127,255)';
 		context.fillRect( 0, 0, width, height );
 
-		for ( var i = 0; i < 4000; i ++ ) {
+		for ( let i = 0; i < 4000; i ++ ) {
 
-			var x = Math.random() * width;
-			var y = Math.random() * height;
-			var r = Math.random() * 3 + 3;
+			const x = Math.random() * width;
+			const y = Math.random() * height;
+			const r = Math.random() * 3 + 3;
 
-			var nx = Math.random() * 2 - 1;
-			var ny = Math.random() * 2 - 1;
-			var nz = 1.5;
+			let nx = Math.random() * 2 - 1;
+			let ny = Math.random() * 2 - 1;
+			let nz = 1.5;
 
-			var l = Math.sqrt( nx * nx + ny * ny + nz * nz );
+			const l = Math.sqrt( nx * nx + ny * ny + nz * nz );
 
 			nx /= l; ny /= l; nz /= l;
 

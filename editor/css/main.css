@@ -2,8 +2,8 @@
 	color-scheme: light dark;
 }
 
-html {
-	touch-action: none;
+[hidden] {
+	display: none !important;
 }
 
 body {
@@ -21,6 +21,17 @@ hr {
 button {
 	position: relative;
 }
+
+input {
+	vertical-align: middle;
+}
+
+	input[type="color"]::-webkit-color-swatch-wrapper {
+		padding: 0;
+	}
+	input[type="color"]::-webkit-color-swatch {
+		border: none;
+	}
 
 textarea {
 	tab-size: 4;
@@ -60,26 +71,42 @@ textarea, input { outline: none; } /* osx */
 	position: relative;
 	display: block;
 	width: 100%;
+	min-width: 335px;
 }
 
 .TabbedPanel .Tabs {
 	position: relative;
+	z-index: 1; /** Above .Panels **/
 	display: block;
 	width: 100%;
+	white-space: pre;
+	overflow: hidden;
+	overflow-x: auto;
 }
 
-.TabbedPanel .Tabs .Tab {
-	padding: 10px;
-	vertical-align: middle;
-	text-transform: uppercase;
-}
+	.TabbedPanel .Tabs::-webkit-scrollbar {
+		height: 5px;
+		background: #eee;
+	}
+	.TabbedPanel .Tabs::-webkit-scrollbar-thumb {
+		background: #08f3;
+	}
+	.TabbedPanel .Tabs:hover::-webkit-scrollbar-thumb {
+		background: #08f;
+		cursor: ew-resize;
+	}
 
-.TabbedPanel .Tabs .Panels {
-	position: relative;
-	display: block;
-	width: 100%;
-	height: 100%;
-}
+	.TabbedPanel .Tabs .Tab {
+		padding: 10px 9px;
+		text-transform: uppercase;
+	}
+
+	.TabbedPanel .Panels {
+		position: absolute;
+		top: 40px;
+		display: block;
+		width: 100%;
+	}
 
 /* Listbox */
 .Listbox {
@@ -87,7 +114,7 @@ textarea, input { outline: none; } /* osx */
 	background-color: #fff;
 	padding: 0;
 	width: 100%;
-	min-height: 140px;
+	min-height: 180px;
 	font-size: 12px;
 	cursor: default;
 	overflow: auto;
@@ -130,9 +157,27 @@ textarea, input { outline: none; } /* osx */
 
 /* outliner */
 
+#outliner .opener {
+	display: inline-block;
+	width: 14px;
+	height: 14px;
+	margin: 0px 4px;
+	vertical-align: top;
+	text-align: center;
+}
+
+	#outliner .opener.open:after {
+		content: '−';
+	}
+
+	#outliner .opener.closed:after {
+		content: '+';
+	}
+
 #outliner .option {
 
 	border: 1px solid transparent;
+
 }
 
 #outliner .option.drag {
@@ -154,19 +199,32 @@ textarea, input { outline: none; } /* osx */
 }
 
 #outliner .type {
-	position:relative;
-	top:-2px;
-	padding: 0 2px;
+	display: inline-block;
+	width: 14px;
+	height: 14px;
 	color: #ddd;
+	text-align: center;
 }
 
 #outliner .type:after {
-	content: '■';
+	content: '●';
 }
 
+/* */
+
 #outliner .Scene {
-	color: #ccccff;
+	color: #8888dd;
 }
+
+#outliner .Camera {
+	color: #dd8888;
+}
+
+#outliner .Light {
+	color: #dddd88;
+}
+
+/* */
 
 #outliner .Object3D {
 	color: #aaaaee;
@@ -190,38 +248,18 @@ textarea, input { outline: none; } /* osx */
 
 /* */
 
-#outliner .PointLight {
-	color: #dddd00;
-}
-
-/* */
-
 #outliner .Geometry {
-	color: #88ff88;
-}
-
-#outliner .BoxGeometry {
-	color: #bbeebb;
-}
-
-#outliner .TorusGeometry {
 	color: #aaeeaa;
 }
 
-/* */
-
 #outliner .Material {
-	color: #ff8888;
-}
-
-#outliner .MeshPhongMaterial {
-	color: #ffaa88;
+	color: #eeaaee;
 }
 
 /* */
 
 #outliner .Script:after {
-	content: '{...}' /* ❮/❯ */
+	content: '◎'
 }
 
 /*  */
@@ -230,7 +268,9 @@ button {
 	color: #555;
 	background-color: #ddd;
 	border: 0px;
+	margin: 0px; /* GNOME Web */
 	padding: 5px 8px;
+	font-size: 12px;
 	text-transform: uppercase;
 	cursor: pointer;
 	outline: none;
@@ -254,7 +294,6 @@ input.Number {
 	font-size: 12px;
 	border: 0px;
 	padding: 2px;
-	cursor: col-resize;
 }
 
 select {
@@ -272,15 +311,37 @@ select {
 
 /* UI */
 
+#resizer {
+	position: absolute;
+	z-index: 2; /* Above #sidebar */
+	top: 32px;
+	right: 350px;
+	width: 5px;
+	bottom: 0px;
+	transform: translatex(2.5px);
+	cursor: col-resize;
+}
+
+	#resizer:hover {
+		background-color: #08f8;
+		transition-property: background-color;
+		transition-delay: 0.1s;
+		transition-duration: 0.2s;
+	}
+
+	#resizer:active {
+		background-color: #08f;
+	}
+
 #viewport {
 	position: absolute;
 	top: 32px;
 	left: 0;
-	right: 300px;
+	right: 350px;
 	bottom: 0;
 }
 
-	#viewport #info {
+	#viewport .Text {
 		text-shadow: 1px 1px 0 rgba(0,0,0,0.25);
 		pointer-events: none;
 	}
@@ -289,7 +350,7 @@ select {
 	position: absolute;
 	top: 32px;
 	left: 0;
-	right: 300px;
+	right: 350px;
 	bottom: 0;
 	opacity: 0.9;
 }
@@ -298,7 +359,7 @@ select {
 	position: absolute;
 	top: 32px;
 	left: 0;
-	right: 300px;
+	right: 350px;
 	bottom: 0;
 }
 
@@ -334,18 +395,32 @@ select {
 			line-height: 16px;
 		}
 
+		#menubar .menu .key {
+			position: absolute;
+			right: 10px;
+			color: #ccc;
+			border: 1px solid #ccc;
+			border-radius: 4px;
+			font-size: 9px;
+			padding: 2px 4px;
+			right: 10px;
+			pointer-events: none;
+		}
+
 		#menubar .menu .options {
 			position: fixed;
+			z-index: 1; /* higher than resizer */
 			display: none;
 			padding: 5px 0;
 			background: #eee;
-			width: 150px;
-			max-height: calc(100% - 80px);
+			min-width: 150px;
+			max-height: calc(100vh - 80px);
 			overflow: auto;
 		}
 
 		#menubar .menu:hover .options {
 			display: block;
+			box-shadow: 0 10px 10px -5px #00000033;
 		}
 
 			#menubar .menu .options hr {
@@ -364,9 +439,29 @@ select {
 					background-color: #08f;
 				}
 
-				#menubar .menu .options .option:active {
+				#menubar .menu .options .option:not(.submenu-title):active {
 					color: #666;
 					background: transparent;
+				}
+
+				#menubar .menu .options .option.toggle::before {
+
+					content: ' ';
+					display: inline-block;
+					width: 16px;
+
+				}
+
+				#menubar .menu .options .option.toggle-on::before {
+
+					content: '✔';
+					font-size: 12px;
+
+				}
+
+				#menubar .submenu-title::after {
+					content: '⏵';
+					float: right;
 				}
 
 		#menubar .menu .options .inactive {
@@ -374,21 +469,21 @@ select {
 			background-color: transparent;
 			padding: 5px 10px;
 			margin: 0 !important;
+			cursor: not-allowed;
 		}
+
+		
 
 #sidebar {
 	position: absolute;
 	right: 0;
 	top: 32px;
 	bottom: 0;
-	width: 300px;
+	width: 350px;
 	background: #eee;
 	overflow: auto;
+	overflow-x: hidden;
 }
-
-	#sidebar * {
-		vertical-align: middle;
-	}
 
 	#sidebar .Panel {
 		color: #888;
@@ -401,8 +496,16 @@ select {
 	}
 
 	#sidebar .Row {
-		min-height: 20px;
+		display: flex;
+		align-items: center;
+		min-height: 24px;
 		margin-bottom: 10px;
+	}
+
+	#sidebar .Row .Label {
+
+		width: 120px;
+
 	}
 
 #tabs {
@@ -423,38 +526,32 @@ select {
 
 #toolbar {
 	position: absolute;
-	left: calc(50% - 290px); /* ( ( 100% - 300px ) / 2.0 ) - 140px */
-	width: 280px;
-	bottom: 16px;
-	height: 32px;
+	left: 10px;
+	top: 42px;
+	width: 32px;
 	background: #eee;
-	color: #333;
+	text-align: center;
 }
 
-	#toolbar * {
-		vertical-align: middle;
+	#toolbar button, #toolbar input {
+		height: 32px;
 	}
 
-	#toolbar .Panel {
-		padding: 4px;
-		color: #888;
-	}
-
-	#toolbar button {
-		margin-right: 6px;
-		line-height: 14px;
-		height: 24px;
-	}
+		#toolbar button img {
+			width: 16px;
+			opacity: 0.5;
+		}
 
 .Outliner {
 	color: #444;
 	background-color: #fff;
 	padding: 0;
 	width: 100%;
-	height: 140px;
+	height: 180px;
 	font-size: 12px;
 	cursor: default;
 	overflow: auto;
+	resize: vertical;
 	outline: none !important;
 }
 
@@ -501,8 +598,12 @@ select {
 
 @media all and ( max-width: 600px ) {
 
+	#resizer {
+		display: none;
+	}
+
 	#menubar .menu .options {
-		max-height: calc(100% - 372px);
+		max-height: calc(100% - 80px);
 	}
 
 	#menubar .menu.right {
@@ -535,12 +636,6 @@ select {
 		width: 100%;
 		top: calc(100% - 320px);
 		bottom: 0;
-	}
-
-	#toolbar {
-		left: calc(50% - 140px);
-		width: 280px;
-		top: 68px;
 	}
 
 }
@@ -585,6 +680,11 @@ select {
 	#menubar {
 		background: #111;
 	}
+
+			#menubar .menu .key {
+				color: #444;
+				border-color: #444;
+			}
 
 			#menubar .menu .options {
 				background: #111;
@@ -632,10 +732,17 @@ select {
 		background-color: #111;
 	}
 
+		#toolbar img {
+			filter: invert(1);
+		}
+
 	.Outliner {
-		color: #888;
 		background: #222;
 	}
+
+		.Outliner .option {
+			color: #999;
+		}
 
 		.Outliner .option:hover {
 			background-color: rgba(21,60,94,0.5);
@@ -649,6 +756,10 @@ select {
 		background-color: #1b1b1b;
 		border-top: 1px solid #222;
 	}
+
+		.TabbedPanel .Tabs::-webkit-scrollbar {
+			background: #111;
+		}
 
 		.TabbedPanel .Tab {
 			color: #555;
@@ -673,4 +784,11 @@ select {
 		background-color: rgba(21,60,94,1);
 	}
 
+}
+
+/* Temporary Chrome fix (#24794) */
+
+[draggable="true"] {
+	transform: translate(0, 0);
+	z-index: 0;
 }

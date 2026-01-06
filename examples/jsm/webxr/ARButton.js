@@ -1,29 +1,80 @@
 /**
- * @author mrdoob / http://mrdoob.com
- * @author Mugen87 / https://github.com/Mugen87
+ * A utility class for creating a button that allows to initiate
+ * immersive AR sessions based on WebXR. The button can be created
+ * with a factory method and then appended ot the website's DOM.
+ *
+ * ```js
+ * document.body.appendChild( ARButton.createButton( renderer ) );
+ * ```
+ *
+ * @hideconstructor
+ * @three_import import { ARButton } from 'three/addons/webxr/ARButton.js';
  */
+class ARButton {
 
-var ARButton = {
+	/**
+	 * Constructs a new AR button.
+	 *
+	 * @param {WebGLRenderer|WebGPURenderer} renderer - The renderer.
+	 * @param {XRSessionInit} [sessionInit] - The a configuration object for the AR session.
+	 * @return {HTMLElement} The button or an error message if `immersive-ar` isn't supported.
+	 */
+	static createButton( renderer, sessionInit = {} ) {
 
-	createButton: function ( renderer, sessionInit = {} ) {
+		const button = document.createElement( 'button' );
 
 		function showStartAR( /*device*/ ) {
 
-			var currentSession = null;
+			if ( sessionInit.domOverlay === undefined ) {
 
-			function onSessionStarted( session ) {
+				const overlay = document.createElement( 'div' );
+				overlay.style.display = 'none';
+				document.body.appendChild( overlay );
+
+				const svg = document.createElementNS( 'http://www.w3.org/2000/svg', 'svg' );
+				svg.setAttribute( 'width', 38 );
+				svg.setAttribute( 'height', 38 );
+				svg.style.position = 'absolute';
+				svg.style.right = '20px';
+				svg.style.top = '20px';
+				svg.addEventListener( 'click', function () {
+
+					currentSession.end();
+
+				} );
+				overlay.appendChild( svg );
+
+				const path = document.createElementNS( 'http://www.w3.org/2000/svg', 'path' );
+				path.setAttribute( 'd', 'M 12,12 L 28,28 M 28,12 12,28' );
+				path.setAttribute( 'stroke', '#fff' );
+				path.setAttribute( 'stroke-width', 2 );
+				svg.appendChild( path );
+
+				if ( sessionInit.optionalFeatures === undefined ) {
+
+					sessionInit.optionalFeatures = [];
+
+				}
+
+				sessionInit.optionalFeatures.push( 'dom-overlay' );
+				sessionInit.domOverlay = { root: overlay };
+
+			}
+
+			//
+
+			let currentSession = null;
+
+			async function onSessionStarted( session ) {
 
 				session.addEventListener( 'end', onSessionEnded );
 
-				/*
-				session.updateWorldTrackingState( {
-					'planeDetectionState': { 'enabled': true }
-				} );
-				*/
-
 				renderer.xr.setReferenceSpaceType( 'local' );
-				renderer.xr.setSession( session );
+
+				await renderer.xr.setSession( session );
+
 				button.textContent = 'STOP AR';
+				sessionInit.domOverlay.root.style.display = '';
 
 				currentSession = session;
 
@@ -34,6 +85,7 @@ var ARButton = {
 				currentSession.removeEventListener( 'end', onSessionEnded );
 
 				button.textContent = 'START AR';
+				sessionInit.domOverlay.root.style.display = 'none';
 
 				currentSession = null;
 
@@ -71,9 +123,33 @@ var ARButton = {
 
 					currentSession.end();
 
+					if ( navigator.xr.offerSession !== undefined ) {
+
+						navigator.xr.offerSession( 'immersive-ar', sessionInit )
+							.then( onSessionStarted )
+							.catch( ( err ) => {
+
+								console.warn( err );
+
+							} );
+
+					}
+
 				}
 
 			};
+
+			if ( navigator.xr.offerSession !== undefined ) {
+
+				navigator.xr.offerSession( 'immersive-ar', sessionInit )
+					.then( onSessionStarted )
+					.catch( ( err ) => {
+
+						console.warn( err );
+
+					} );
+
+			}
 
 		}
 
@@ -100,6 +176,16 @@ var ARButton = {
 
 		}
 
+		function showARNotAllowed( exception ) {
+
+			disableButton();
+
+			console.warn( 'Exception when trying to call xr.isSessionSupported', exception );
+
+			button.textContent = 'AR NOT ALLOWED';
+
+		}
+
 		function stylizeElement( element ) {
 
 			element.style.position = 'absolute';
@@ -119,7 +205,7 @@ var ARButton = {
 
 		if ( 'xr' in navigator ) {
 
-			var button = document.createElement( 'button' );
+			button.id = 'ARButton';
 			button.style.display = 'none';
 
 			stylizeElement( button );
@@ -128,13 +214,13 @@ var ARButton = {
 
 				supported ? showStartAR() : showARNotSupported();
 
-			} ).catch( showARNotSupported );
+			} ).catch( showARNotAllowed );
 
 			return button;
 
 		} else {
 
-			var message = document.createElement( 'a' );
+			const message = document.createElement( 'a' );
 
 			if ( window.isSecureContext === false ) {
 
@@ -160,6 +246,6 @@ var ARButton = {
 
 	}
 
-};
+}
 
 export { ARButton };

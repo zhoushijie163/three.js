@@ -1,52 +1,59 @@
 /**
- * @author alteredq / http://alteredqualia.com/
- *
- * Unpack RGBA depth shader
- * - show RGBA encoded depth as monochrome color
+ * @module UnpackDepthRGBAShader
+ * @three_import import { UnpackDepthRGBAShader } from 'three/addons/shaders/UnpackDepthRGBAShader.js';
  */
 
+/**
+ * Depth visualization shader that shows depth values as monochrome color.
+ *
+ * @constant
+ * @type {ShaderMaterial~Shader}
+ */
+const UnpackDepthRGBAShader = {
 
-
-var UnpackDepthRGBAShader = {
+	name: 'UnpackDepthRGBAShader',
 
 	uniforms: {
 
-		"tDiffuse": { value: null },
-		"opacity": { value: 1.0 }
+		'tDiffuse': { value: null },
+		'opacity': { value: 1.0 }
 
 	},
 
-	vertexShader: [
+	vertexShader: /* glsl */`
 
-		"varying vec2 vUv;",
+		varying vec2 vUv;
 
-		"void main() {",
+		void main() {
 
-		"	vUv = uv;",
-		"	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+			vUv = uv;
+			gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
 
-		"}"
+		}`,
 
-	].join( "\n" ),
+	fragmentShader: /* glsl */`
 
-	fragmentShader: [
+		uniform float opacity;
 
-		"uniform float opacity;",
+		uniform sampler2D tDiffuse;
 
-		"uniform sampler2D tDiffuse;",
+		varying vec2 vUv;
 
-		"varying vec2 vUv;",
+		void main() {
 
-		"#include <packing>",
+			float depth = texture2D( tDiffuse, vUv ).r;
 
-		"void main() {",
+			#ifdef USE_REVERSED_DEPTH_BUFFER
 
-		"	float depth = 1.0 - unpackRGBAToDepth( texture2D( tDiffuse, vUv ) );",
-		"	gl_FragColor = vec4( vec3( depth ), opacity );",
+				gl_FragColor = vec4( vec3( depth ), opacity );
 
-		"}"
+			#else
 
-	].join( "\n" )
+				gl_FragColor = vec4( vec3( 1.0 - depth ), opacity );
+
+			#endif
+
+		}`
 
 };
 

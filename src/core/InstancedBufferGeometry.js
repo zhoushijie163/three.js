@@ -1,45 +1,53 @@
 import { BufferGeometry } from './BufferGeometry.js';
 
 /**
- * @author benaadams / https://twitter.com/ben_a_adams
+ * An instanced version of a geometry.
  */
+class InstancedBufferGeometry extends BufferGeometry {
 
-function InstancedBufferGeometry() {
+	/**
+	 * Constructs a new instanced buffer geometry.
+	 */
+	constructor() {
 
-	BufferGeometry.call( this );
+		super();
 
-	this.type = 'InstancedBufferGeometry';
-	this.maxInstancedCount = undefined;
+		/**
+		 * This flag can be used for type testing.
+		 *
+		 * @type {boolean}
+		 * @readonly
+		 * @default true
+		 */
+		this.isInstancedBufferGeometry = true;
 
-}
+		this.type = 'InstancedBufferGeometry';
 
-InstancedBufferGeometry.prototype = Object.assign( Object.create( BufferGeometry.prototype ), {
+		/**
+		 * The instance count.
+		 *
+		 * @type {number}
+		 * @default Infinity
+		 */
+		this.instanceCount = Infinity;
 
-	constructor: InstancedBufferGeometry,
+	}
 
-	isInstancedBufferGeometry: true,
+	copy( source ) {
 
-	copy: function ( source ) {
+		super.copy( source );
 
-		BufferGeometry.prototype.copy.call( this, source );
-
-		this.maxInstancedCount = source.maxInstancedCount;
+		this.instanceCount = source.instanceCount;
 
 		return this;
 
-	},
+	}
 
-	clone: function () {
+	toJSON() {
 
-		return new this.constructor().copy( this );
+		const data = super.toJSON();
 
-	},
-
-	toJSON: function () {
-
-		var data = BufferGeometry.prototype.toJSON.call( this );
-
-		data.maxInstancedCount = this.maxInstancedCount;
+		data.instanceCount = this.instanceCount;
 
 		data.isInstancedBufferGeometry = true;
 
@@ -47,6 +55,6 @@ InstancedBufferGeometry.prototype = Object.assign( Object.create( BufferGeometry
 
 	}
 
-} );
+}
 
 export { InstancedBufferGeometry };

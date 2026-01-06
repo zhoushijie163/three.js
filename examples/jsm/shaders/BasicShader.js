@@ -1,34 +1,35 @@
 /**
- * @author mrdoob / http://www.mrdoob.com
- *
- * Simple test shader
+ * @module BasicShader
+ * @three_import import { BasicShader } from 'three/addons/shaders/BasicShader.js';
  */
 
+/**
+ * Simple shader for testing.
+ *
+ * @constant
+ * @type {ShaderMaterial~Shader}
+ */
+const BasicShader = {
 
-
-var BasicShader = {
+	name: 'BasicShader',
 
 	uniforms: {},
 
-	vertexShader: [
+	vertexShader: /* glsl */`
 
-		"void main() {",
+		void main() {
 
-		"	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+			gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
 
-		"}"
+		}`,
 
-	].join( "\n" ),
+	fragmentShader: /* glsl */`
 
-	fragmentShader: [
+		void main() {
 
-		"void main() {",
+			gl_FragColor = vec4( 1.0, 0.0, 0.0, 0.5 );
 
-		"	gl_FragColor = vec4( 1.0, 0.0, 0.0, 0.5 );",
-
-		"}"
-
-	].join( "\n" )
+		}`
 
 };
 

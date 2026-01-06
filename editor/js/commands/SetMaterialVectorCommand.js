@@ -1,76 +1,88 @@
-/**
- * @author dforrer / https://github.com/dforrer
- * Developed as part of a project at University of Applied Sciences and Arts Northwestern Switzerland (www.fhnw.ch)
- */
-
 import { Command } from '../Command.js';
 
-var SetMaterialVectorCommand = function ( editor, object, attributeName, newValue, materialSlot ) {
+class SetMaterialVectorCommand extends Command {
 
-	Command.call( this, editor );
+	/**
+	 *
+	 * @param {Editor} editor
+	 * @param {THREE.Object3D|null} [object=null]
+	 * @param {string} [attributeName='']
+	 * @param {THREE.Vector2|THREE.Vector3|THREE.Vector4|null} [newValue=null]
+	 * @param {number} [materialSlot=-1]
+	 * @constructor
+	 */
+	constructor( editor, object = null, attributeName = '', newValue = null, materialSlot = - 1 ) {
 
-	this.type = 'SetMaterialColorCommand';
-	this.name = 'Set Material.' + attributeName;
-	this.updatable = true;
+		super( editor );
 
-	this.object = object;
-	this.material = this.editor.getObjectMaterial( object, materialSlot );
+		this.type = 'SetMaterialVectorCommand';
+		this.name = editor.strings.getKey( 'command/SetMaterialVector' ) + ': ' + attributeName;
+		this.updatable = true;
 
-	this.oldValue = ( this.material !== undefined ) ? this.material[ attributeName ].toArray() : undefined;
-	this.newValue = newValue;
+		this.object = object;
+		this.materialSlot = materialSlot;
 
-	this.attributeName = attributeName;
+		const material = ( object !== null ) ? editor.getObjectMaterial( object, materialSlot ) : null;
 
-};
+		this.oldValue = ( material !== null ) ? material[ attributeName ].toArray() : null;
+		this.newValue = newValue;
 
-SetMaterialVectorCommand.prototype = {
+		this.attributeName = attributeName;
 
-	execute: function () {
+	}
 
-		this.material[ this.attributeName ].fromArray( this.newValue );
+	execute() {
 
-		this.editor.signals.materialChanged.dispatch( this.material );
+		const material = this.editor.getObjectMaterial( this.object, this.materialSlot );
 
-	},
+		material[ this.attributeName ].fromArray( this.newValue );
 
-	undo: function () {
+		this.editor.signals.materialChanged.dispatch( this.object, this.materialSlot );
 
-		this.material[ this.attributeName ].fromArray( this.oldValue );
+	}
 
-		this.editor.signals.materialChanged.dispatch( this.material );
+	undo() {
 
-	},
+		const material = this.editor.getObjectMaterial( this.object, this.materialSlot );
 
-	update: function ( cmd ) {
+		material[ this.attributeName ].fromArray( this.oldValue );
+
+		this.editor.signals.materialChanged.dispatch( this.object, this.materialSlot );
+
+	}
+
+	update( cmd ) {
 
 		this.newValue = cmd.newValue;
 
-	},
+	}
 
-	toJSON: function () {
+	toJSON() {
 
-		var output = Command.prototype.toJSON.call( this );
+		const output = super.toJSON( this );
 
 		output.objectUuid = this.object.uuid;
 		output.attributeName = this.attributeName;
 		output.oldValue = this.oldValue;
 		output.newValue = this.newValue;
+		output.materialSlot = this.materialSlot;
 
 		return output;
 
-	},
+	}
 
-	fromJSON: function ( json ) {
+	fromJSON( json ) {
 
-		Command.prototype.fromJSON.call( this, json );
+		super.fromJSON( json );
 
 		this.object = this.editor.objectByUuid( json.objectUuid );
 		this.attributeName = json.attributeName;
 		this.oldValue = json.oldValue;
 		this.newValue = json.newValue;
+		this.materialSlot = json.materialSlot;
 
 	}
 
-};
+}
 
 export { SetMaterialVectorCommand };
